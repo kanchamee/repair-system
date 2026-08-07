@@ -1,0 +1,149 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --blue: #A8DDF0;
+  --blue-dark: #6EC3F4;
+  --pink: #F9C9DD;
+  --purple: #D9C6F0;
+  --green: #BFEBCF;
+  --text-dark: #3A3550;
+  --text-muted: #7A7590;
+  --bg: #FAF7FF;
+  --card-bg: #FFFFFF;
+  --radius: 18px;
+  --shadow: 0 8px 24px rgba(120, 100, 180, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Kanit', sans-serif;
+  background: linear-gradient(135deg, #EAF6FD 0%, #F6ECFB 50%, #FDEFF6 100%);
+  color: var(--text-dark);
+  min-height: 100vh;
+}
+
+.container { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+.container-wide { max-width: 1000px; margin: 0 auto; padding: 24px 16px 60px; }
+
+/* ===== หน้าแรก ===== */
+.home-hero { text-align: center; padding: 60px 20px 40px; }
+.home-hero h1 {
+  font-size: 2.4rem; font-weight: 700; margin: 0;
+  background: linear-gradient(90deg, #6EC3F4, #C39BF0, #F79BC0);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.home-hero p { font-size: 1.15rem; color: var(--text-muted); margin-top: 6px; }
+.home-buttons { display: flex; flex-direction: column; gap: 18px; max-width: 420px; margin: 40px auto 0; }
+
+.btn {
+  display: block; text-decoration: none; text-align: center; padding: 18px 24px;
+  border-radius: var(--radius); font-size: 1.15rem; font-weight: 600; color: var(--text-dark);
+  box-shadow: var(--shadow); border: none; cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(120,100,180,0.2); }
+.btn:active { transform: translateY(0); }
+.btn-report { background: linear-gradient(135deg, var(--blue), var(--purple)); }
+.btn-status { background: linear-gradient(135deg, var(--green), var(--blue)); }
+.btn-admin  { background: linear-gradient(135deg, var(--pink), var(--purple)); }
+
+/* ===== การ์ด / ฟอร์มทั่วไป ===== */
+.card { background: var(--card-bg); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
+label { display: block; font-weight: 500; margin: 14px 0 6px; color: var(--text-dark); }
+
+input[type="text"], input[type="email"], input[type="tel"], input[type="number"],
+input[type="datetime-local"], input[type="file"], select, textarea {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #E5DFF5;
+  font-family: 'Kanit', sans-serif; font-size: 1rem; background: #FBFAFF; transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue-dark); }
+textarea { resize: vertical; min-height: 90px; }
+.hint { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+.locked-note { font-size: 0.9rem; color: var(--text-muted); background: #F0EDFB; padding: 8px 12px; border-radius: 10px; margin: 6px 0; }
+.field-error { color: #E2493D; font-size: 0.85rem; margin-top: 4px; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--blue-dark), var(--purple)); color: white; width: 100%;
+  padding: 16px; border-radius: var(--radius); font-size: 1.1rem; font-weight: 600; border: none; cursor: pointer; margin-top: 22px;
+}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-secondary {
+  background: #F0EDFB; color: var(--text-dark); border: none; padding: 12px 20px; border-radius: 14px;
+  cursor: pointer; font-family: 'Kanit', sans-serif; font-weight: 500;
+}
+.btn-danger { background: #FBDCDA; color: #B5352A; border: none; padding: 10px 16px; border-radius: 12px; cursor: pointer; font-family: 'Kanit', sans-serif; font-weight: 500; }
+
+.top-nav { display: flex; justify-content: space-between; align-items: center; padding: 16px; }
+.top-nav a { text-decoration: none; color: var(--text-dark); font-weight: 500; }
+.page-title { text-align: center; font-size: 1.6rem; font-weight: 700; margin: 8px 0 20px; }
+.hidden { display: none !important; }
+
+/* ===== Popup / Overlay ===== */
+.overlay {
+  position: fixed; inset: 0; background: rgba(60, 50, 90, 0.35);
+  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+}
+.popup {
+  background: white; border-radius: 22px; padding: 32px 28px; max-width: 380px; width: 100%;
+  text-align: center; box-shadow: 0 20px 50px rgba(80,60,120,0.25);
+}
+.popup .emoji { font-size: 3rem; margin-bottom: 10px; }
+.popup h3 { margin: 0 0 8px; font-size: 1.3rem; }
+.popup p { color: var(--text-muted); margin-bottom: 20px; }
+.popup input { text-align: center; letter-spacing: 4px; font-size: 1.2rem; }
+
+/* ===== Lightbox รูปภาพ ===== */
+.lightbox-content { max-width: 92vw; max-height: 88vh; display: flex; flex-direction: column; align-items: center; }
+.lightbox-content img { max-width: 100%; max-height: 76vh; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+.lightbox-content p { color: white; margin-top: 12px; font-weight: 500; }
+.lightbox-close { position: absolute; top: 18px; right: 24px; color: white; font-size: 2rem; cursor: pointer; background: none; border: none; }
+
+/* ===== สถานะ badge / กล่องสถานะ ===== */
+.status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+.status-box {
+  border-radius: 14px; padding: 14px 8px; text-align: center; font-weight: 600; font-size: 0.85rem;
+  color: var(--text-dark); cursor: pointer; border: none; font-family: 'Kanit', sans-serif;
+}
+.status-box .count { display: block; font-size: 1.6rem; margin-top: 4px; }
+.status-box .emoji { font-size: 1.4rem; display: block; }
+.status-box.selected { outline: 3px solid var(--text-dark); }
+
+.category-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+.category-btn {
+  border-radius: 16px; padding: 20px 10px; text-align: center; font-weight: 600; font-size: 1rem;
+  cursor: pointer; border: 2px solid transparent; font-family: 'Kanit', sans-serif;
+  background: white; box-shadow: var(--shadow);
+}
+.category-btn .emoji { font-size: 1.8rem; display: block; margin-bottom: 6px; }
+.category-btn.selected { border-color: var(--blue-dark); background: #EAF6FD; }
+
+/* ===== การ์ดรายการปัญหา ===== */
+.report-card { background: white; border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin-bottom: 16px; border-left: 8px solid #ccc; position: relative; }
+.report-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.report-status-pill { font-size: 0.85rem; font-weight: 600; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+.report-field { margin: 6px 0; font-size: 0.95rem; }
+.report-field b { color: var(--text-muted); font-weight: 500; margin-right: 4px; }
+.report-thumb { max-width: 160px; border-radius: 10px; margin-top: 8px; cursor: pointer; display: block; }
+.report-thumb-caption { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+.report-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+.status-select { width: auto; padding: 8px 12px; }
+.reply-box { margin-top: 14px; padding: 14px; background: #F6F3FC; border-radius: 12px; }
+.reply-box h4 { margin: 0 0 8px; font-size: 1rem; }
+.empty-note { text-align: center; color: var(--text-muted); padding: 30px 10px; }
+
+/* ===== ฟิลเตอร์ / แอดมิน ===== */
+.filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+.filter-row > div { flex: 1; min-width: 160px; }
+.admin-status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 24px; }
+.summary-box { background: #F6F3FC; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+.summary-box h4 { margin: 0 0 8px; }
+.summary-box ul { margin: 0; padding-left: 20px; }
+.login-lock-icon { font-size: 3rem; }
+
+@media (max-width: 480px) {
+  .status-grid { grid-template-columns: repeat(2, 1fr); }
+  .home-hero h1 { font-size: 1.9rem; }
+  .admin-status-grid { grid-template-columns: repeat(2, 1fr); }
+}
