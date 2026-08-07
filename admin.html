@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ผู้ดูแลระบบแจ้งซ่อม - Repair System</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <div class="overlay" id="login-popup">
+    <div class="popup">
+      <div class="login-lock-icon">🔐</div>
+      <h3>ผู้ดูแลระบบแจ้งซ่อม</h3>
+      <p>กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+      <input type="password" id="admin-pass" maxlength="10">
+      <p class="field-error hidden" id="login-error">รหัสไม่ถูกต้อง</p>
+      <button class="btn-primary" id="login-btn">เข้าสู่ระบบ</button>
+      <button class="btn-secondary" style="margin-top:10px;width:100%" onclick="window.location.href='index.html'">กลับหน้าหลัก</button>
+    </div>
+  </div>
+
+  <div id="admin-app" class="hidden">
+    <div class="top-nav">
+      <a href="index.html">← หน้าหลัก</a>
+      <span>🔐 ผู้ดูแลระบบแจ้งซ่อม</span>
+    </div>
+
+    <div class="container-wide">
+      <div class="filter-row">
+        <button class="btn-secondary" id="export-pdf">📄 Export PDF</button>
+        <button class="btn-secondary" id="export-excel">📊 Export Excel</button>
+      </div>
+
+      <div class="admin-status-grid" id="admin-status-grid"></div>
+
+      <div class="card">
+        <label>กรองข้อมูลรายการแจ้งซ่อม</label>
+        <select id="filter-type">
+          <option value="all">แสดงทั้งหมด</option>
+          <option value="classroom">ตามห้องเรียน</option>
+          <option value="bathroom">ตามห้องน้ำ</option>
+          <option value="subject">ตามห้องหมวด</option>
+          <option value="office">ตามห้องสำนักงาน</option>
+          <option value="problemType">ตามประเภทปัญหา</option>
+          <option value="month">ตามเดือนที่แจ้งซ่อม</option>
+        </select>
+        <div id="filter-sub"></div>
+        <button class="btn-primary" id="filter-search-btn">ค้นหา</button>
+      </div>
+
+      <div id="month-summary"></div>
+      <div id="admin-results"></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close">✕</button>
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <img id="lightbox-img" src="">
+      <p id="lightbox-caption"></p>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="confirm-delete-popup">
+    <div class="popup">
+      <div class="emoji">🗑️</div>
+      <h3>ยืนยันการลบ</h3>
+      <p>ยืนยันว่าจะลบปัญหานี้ใช่หรือไม่?</p>
+      <button class="btn-danger" id="confirm-delete-yes" style="width:100%;margin-bottom:10px;">ลบเลย</button>
+      <button class="btn-secondary" style="width:100%" onclick="hideOverlay('confirm-delete-popup')">ยกเลิก</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="reply-popup">
+    <div class="popup" style="max-width:440px;text-align:left">
+      <h3 style="text-align:center">💬 ตอบกลับการซ่อม</h3>
+      <label>ชื่อช่างที่ทำงานซ่อม</label>
+      <input type="text" id="reply-technician">
+      <label>รายละเอียดการซ่อม</label>
+      <textarea id="reply-description"></textarea>
+      <label>ถ่ายรูปหลังซ่อม (จำเป็น)</label>
+      <input type="file" id="reply-image" accept="image/*">
+      <p class="field-error hidden" id="reply-error">กรุณากรอกข้อมูลให้ครบและแนบรูปภาพ</p>
+      <button class="btn-primary" id="reply-submit-btn">ส่งการตอบกลับ</button>
+      <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="hideOverlay('reply-popup')">ยกเลิก</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="utils.js"></script>
+  <script src="locations.js"></script>
+  <script>
+    const ADMIN_CODE = "6933";
+    document.getElementById("login-btn").addEventListener("click", () => {
+      const val = document.getElementById("admin-pass").value;
+      if (val === ADMIN_CODE) {
+        hideOverlay("login-popup");
+        document.getElementById("admin-app").classList.remove("hidden");
+        initAdmin();
+      } else {
+        document.getElementById("login-error").classList.remove("hidden");
+        document.getElementById("admin-pass").value = "";
+      }
+    });
+
+    let allReports = [];
+    let currentDeleteId = null;
+    let currentReplyId = null;
+
+    function initAdmin() {
+      db.ref("reports").on("value", (snap) => {
+        allReports = [];
+        snap.forEach((child) => allReports.push({ id: child.key, ...child.val() }));
+        renderStatusCounts();
+      });
+      renderStatusGrid();
+      renderFilterSub();
+    }
+
+    function renderStatusGrid() {
+      const grid = document.getElementById("admin-status-grid");
+      grid.innerHTML = STATUS_ORDER.map((s) => {
+        const m = getStatusMeta(s);
+        return `<button class="status-box" style="background:${m.color}" data-status="${s}">
+          <span class="emoji">${m.emoji}</span>${m.label}<span class="count" id="count-${s}">0</span></button>`;
+      }).join("");
+      grid.querySelectorAll(".status-box").forEach((box) => {
+        box.addEventListener("click", () => {
+          const s = box.dataset.status;
+          const matched = allReports.filter((r) => r.status === s);
+          matched.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          document.getElementById("month-summary").innerHTML = "";
+          renderAdminResults(matched);
+        });
+      });
+    }
+
+    function renderStatusCounts() {
+      STATUS_ORDER.forEach((s) => {
+        const el = document.getElementById(`count-${s}`);
+        if (el) el.textContent = allReports.filter((r) => r.status === s).length;
+      });
+    }
+
+    function renderFilterSub() {
+      const type = document.getElementById("filter-type").value;
+      const sub = document.getElementById("filter-sub");
+      if (type === "bathroom") {
+        sub.innerHTML = `<label>อาคาร</label><select id="sub-building">${optionsHtml([1,2,3,4,5,6].map(String), "-- เลือกอาคาร --")}</select>`;
+      } else if (type === "subject") {
+        sub.innerHTML = `<label>กลุ่มสาระฏ</label><select id="sub-group">${optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --")}</select>`;
+      } else if (type === "problemType") {
+        sub.innerHTML = `<label>ประเภทปัญหา</label><select id="sub-problem">${optionsHtml(PROBLEM_TYPES, "-- เลือกประเภท --")}</select>`;
+      } else if (type === "month") {
+        sub.innerHTML = `<label>เดือน</label><select id="sub-month">${optionsHtml(MONTH_NAMES, "-- เลือกเดือน --")}</select>`;
+      } else {
+        sub.innerHTML = "";
+      }
+      document.getElementById("admin-results").innerHTML = "";
+      document.getElementById("month-summary").innerHTML = "";
+    }
+    document.getElementById("filter-type").addEventListener("change", renderFilterSub);
+
+    document.getElementById("filter-search-btn").addEventListener("click", () => {
+      const type = document.getElementById("filter-type").value;
+      let matched = allReports.slice();
+      document.getElementById("month-summary").innerHTML = "";
+
+      if (type === "classroom") {
+        matched = matched.filter((r) => r.locationType === "classroom");
+      } else if (type === "bathroom") {
+        const b = document.getElementById("sub-building").value;
+        matched = matched.filter((r) => r.locationType === "bathroom" && r.locationDetail && r.locationDetail.building === b);
+      } else if (type === "subject") {
+        const g = document.getElementById("sub-group").value;
+        matched = matched.filter((r) => r.locationType === "subject" && r.locationDetail && r.locationDetail.group === g);
+      } else if (type === "office") {
+        matched = matched.filter((r) => r.locationType === "office");
+      } else if (type === "problemType") {
+        const p = document.getElementById("sub-problem").value;
+        matched = matched.filter((r) => r.problemType === p);
+      } else if (type === "month") {
+        const m = document.getElementById("sub-month").value;
+        matched = matched.filter((r) => r.month === m);
+        renderMonthSummary(matched, m);
+      }
+
+      matched.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      renderAdminResults(matched);
+    });
+
+    function renderMonthSummary(list, month) {
+      const byProblem = {};
+      const byStatus = {};
+      list.forEach((r) => {
+        const pl = r.problemType === "other" ? "อื่นๆ" : PROBLEM_TYPES[r.problemType];
+        byProblem[pl] = (byProblem[pl] || 0) + 1;
+        const sl = getStatusMeta(r.status).label;
+        byStatus[sl] = (byStatus[sl] || 0) + 1;
+      });
+      document.getElementById("month-summary").innerHTML = `
+        <div class="summary-box">
+          <h4>สรุปเดือน${MONTH_NAMES[month] || ""} — ทั้งหมด ${list.length} ปัญหา</h4>
+          <p><b>แยกตามประเภทปัญหา:</b></p>
+          <ul>${Object.entries(byProblem).map(([k,v]) => `<li>${k}: ${v} รายการ</li>`).join("") || "<li>ไม่มีข้อมูล</li>"}</ul>
+          <p><b>แยกตามสถานะ:</b></p>
+          <ul>${Object.entries(byStatus).map(([k,v]) => `<li>${k}: ${v} รายการ</li>`).join("") || "<li>ไม่มีข้อมูล</li>"}</ul>
+        </div>`;
+    }
+
+    function renderAdminResults(list) {
+      const el = document.getElementById("admin-results");
+      if (!list.length) { el.innerHTML = `<p class="empty-note">ไม่พบรายการแจ้งซ่อม</p>`; return; }
+      el.innerHTML = list.map((r) => {
+        const meta = getStatusMeta(r.status);
+        const problemLabel = r.problemType === "other" ? (r.problemOther || "อื่นๆ") : PROBLEM_TYPES[r.problemType];
+        return `
+          <div class="report-card" style="border-left-color:${meta.border}" data-id="${r.id}">
+            <div class="report-card-head">
+              <div class="report-status-pill" id="pill-${r.id}" style="background:${meta.color}22;color:${meta.border}">${meta.emoji} ${meta.label}</div>
+            </div>
+            <div class="report-field"><b>สถานที่:</b> ${escapeHtml(r.locationLabel)}</div>
+            <div class="report-field"><b>ผู้แจ้ง:</b> ${escapeHtml(r.fullName)} (${r.reporterType === "teacher" ? "ครู/บุคลากร" : "นักเรียน"})</div>
+            <div class="report-field"><b>อีเมล:</b> ${escapeHtml(r.email)}</div>
+            <div class="report-field"><b>เบอร์โทร:</b> ${escapeHtml(r.phone)}</div>
+            ${r.studentId ? `<div class="report-field"><b>เลขนักเรียน:</b> ${escapeHtml(r.studentId)}</div>` : ""}
+            <div class="report-field"><b>วันที่แจ้ง:</b> ${formatDateThai(r.reportDate)}</div>
+            <div class="report-field"><b>ประเภทปัญหา:</b> ${problemLabel}</div>
+            <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.description)}</div>
+            <img class="report-thumb" src="${r.imageUrl}" onclick="openLightbox('${r.imageUrl}','รูปของปัญหา')">
+            <div class="report-thumb-caption">รูปของปัญหา (กดเพื่อขยาย)</div>
+
+            <div class="report-actions">
+              <select class="status-select" onchange="changeStatus('${r.id}', this.value)">
+                ${STATUS_ORDER.map((s) => `<option value="${s}" ${s===r.status?"selected":""}>${getStatusMeta(s).emoji} ${getStatusMeta(s).label}</option>`).join("")}
+              </select>
+              <button class="btn-danger" onclick="askDelete('${r.id}')">🗑️ ลบ</button>
+              <button class="btn-secondary" onclick="openReply('${r.id}')">💬 ตอบกลับ</button>
+            </div>
+
+            ${r.reply ? `
+              <div class="reply-box">
+                <h4>💬 การตอบกลับจากช่าง</h4>
+                <div class="report-field"><b>ช่าง:</b> ${escapeHtml(r.reply.technician)}</div>
+                <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.reply.description)}</div>
+                <img class="report-thumb" src="${r.reply.imageUrl}" onclick="openLightbox('${r.reply.imageUrl}','รูปที่ช่างส่งตอบกลับ')">
+                <div class="report-thumb-caption">รูปที่ช่างส่งตอบกลับ (กดเพื่อขยาย)</div>
+              </div>` : ""}
+          </div>`;
+      }).join("");
+    }
+
+    async function changeStatus(id, status) {
+      await db.ref(`reports/${id}`).update({ status });
+      const idx = allReports.findIndex((r) => r.id === id);
+      if (idx >= 0) allReports[idx].status = status;
+      const meta = getStatusMeta(status);
+      const card = document.querySelector(`.report-card[data-id="${id}"]`);
+      if (card) card.style.borderLeftColor = meta.border;
+      const pill = document.getElementById(`pill-${id}`);
+      if (pill) { pill.style.background = meta.color + "22"; pill.style.color = meta.border; pill.textContent = `${meta.emoji} ${meta.label}`; }
+    }
+
+    function askDelete(id) {
+      currentDeleteId = id;
+      showOverlay("confirm-delete-popup");
+    }
+    document.getElementById("confirm-delete-yes").addEventListener("click", async () => {
+      if (currentDeleteId) {
+        await db.ref(`reports/${currentDeleteId}`).remove();
+        const card = document.querySelector(`.report-card[data-id="${currentDeleteId}"]`);
+        if (card) card.remove();
+      }
+      hideOverlay("confirm-delete-popup");
+      currentDeleteId = null;
+    });
+
+    function openReply(id) {
+      currentReplyId = id;
+      document.getElementById("reply-technician").value = "";
+      document.getElementById("reply-description").value = "";
+      document.getElementById("reply-image").value = "";
+      document.getElementById("reply-error").classList.add("hidden");
+      showOverlay("reply-popup");
+    }
+    document.getElementById("reply-submit-btn").addEventListener("click", async () => {
+      const tech = document.getElementById("reply-technician").value.trim();
+      const desc = document.getElementById("reply-description").value.trim();
+      const fileInput = document.getElementById("reply-image");
+      const errEl = document.getElementById("reply-error");
+      if (!tech || !desc || !fileInput.files[0]) {
+        errEl.classList.remove("hidden");
+        return;
+      }
+      const btn = document.getElementById("reply-submit-btn");
+      btn.disabled = true;
+      btn.textContent = "กำลังส่ง...";
+      try {
+        const imageUrl = await uploadCompressedImage(fileInput.files[0], "replies");
+        const reply = { technician: tech, description: desc, imageUrl, repliedAt: Date.now() };
+        await db.ref(`reports/${currentReplyId}`).update({ reply });
+        const idx = allReports.findIndex((r) => r.id === currentReplyId);
+        if (idx >= 0) allReports[idx].reply = reply;
+        hideOverlay("reply-popup");
+        const card = document.querySelector(`.report-card[data-id="${currentReplyId}"]`);
+        if (card) {
+          const r = allReports[idx];
+          const box = document.createElement("div");
+          box.className = "reply-box";
+          box.innerHTML = `<h4>💬 การตอบกลับจากช่าง</h4>
+            <div class="report-field"><b>ช่าง:</b> ${escapeHtml(r.reply.technician)}</div>
+            <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.reply.description)}</div>
+            <img class="report-thumb" src="${r.reply.imageUrl}" onclick="openLightbox('${r.reply.imageUrl}','รูปที่ช่างส่งตอบกลับ')">
+            <div class="report-thumb-caption">รูปที่ช่างส่งตอบกลับ (กดเพื่อขยาย)</div>`;
+          card.appendChild(box);
+        }
+      } catch (err) {
+        console.error(err);
+        errEl.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่";
+        errEl.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "ส่งการตอบกลับ";
+      }
+    });
+
+    // ===== Export =====
+    document.getElementById("export-pdf").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 15;
+      doc.setFontSize(14);
+      doc.text("Repair System - Report Export", 14, y);
+      y += 10;
+      doc.setFontSize(9);
+      allReports.forEach((r) => {
+        if (y > 280) { doc.addPage(); y = 15; }
+        const line = `${r.locationLabel || ""} | ${r.fullName || ""} | ${PROBLEM_TYPES[r.problemType] || r.problemType} | ${getStatusMeta(r.status).label} | ${r.reportDate || ""}`;
+        doc.text(line, 14, y);
+        y += 7;
+      });
+      doc.save("repair-report.pdf");
+    });
+
+    document.getElementById("export-excel").addEventListener("click", () => {
+      const rows = allReports.map((r) => ({
+        "สถานที่": r.locationLabel,
+        "ผู้แจ้ง": r.fullName,
+        "สถานะผู้แจ้ง": r.reporterType === "teacher" ? "ครู/บุคลากร" : "นักเรียน",
+        "อีเมล": r.email,
+        "เบอร์โทร": r.phone,
+        "เลขนักเรียน": r.studentId || "",
+        "วันที่แจ้ง": r.reportDate,
+        "ประเภทปัญหา": r.problemType === "other" ? (r.problemOther || "อื่นๆ") : PROBLEM_TYPES[r.problemType],
+        "รายละเอียด": r.description,
+        "สถานะ": getStatusMeta(r.status).label
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Reports");
+      XLSX.writeFile(wb, "repair-report.xlsx");
+    });
+  </script>
+</body>
+</html>
