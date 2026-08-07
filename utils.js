@@ -37,6 +37,7 @@ function getBangkokNowForInput() {
 }
 
 function getMonthFromInputValue(value) {
+  // value: YYYY-MM-DDTHH:mm -> คืนค่าเดือนแบบ "MM"
   if (!value || value.length < 7) return "01";
   return value.slice(5, 7);
 }
@@ -81,13 +82,20 @@ function compressImage(file, maxWidth = 1600, quality = 0.75) {
   });
 }
 
-// ===== อัปโหลดรูปที่บีบอัดแล้วขึ้น Firebase Storage → คืนค่า URL =====
+// ===== แปลง Blob เป็น base64 data URL =====
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ===== บีบอัดรูปแล้วแปลงเป็น base64 เก็บลง Realtime Database โดยตรง (ไม่ใช้ Firebase Storage เพื่อให้ใช้แผนฟรีได้) =====
 async function uploadCompressedImage(file, folder = "reports") {
   const compressedBlob = await compressImage(file);
-  const filename = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-  const ref = storage.ref().child(filename);
-  await ref.put(compressedBlob, { contentType: "image/jpeg" });
-  return await ref.getDownloadURL();
+  return await blobToDataUrl(compressedBlob);
 }
 
 // ===== helper: สร้าง <option> จาก array/object =====
