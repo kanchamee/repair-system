@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แจ้งซ่อมอุปกรณ์ - Repair System</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="top-nav">
+    <a href="index.html">← หน้าหลัก</a>
+  </div>
+
+  <div class="container">
+    <div class="page-title">🛠️ แจ้งซ่อมอุปกรณ์</div>
+
+    <form class="card" id="report-form">
+      <label>สถานะผู้แจ้ง</label>
+      <select id="reporterType" required>
+        <option value="">-- เลือกสถานะ --</option>
+        <option value="teacher">ครู/บุคลากร</option>
+        <option value="student">นักเรียน</option>
+      </select>
+
+      <label>อีเมล</label>
+      <input type="email" id="email" required>
+
+      <label>ชื่อ-นามสกุล</label>
+      <input type="text" id="fullName" required>
+
+      <label>เบอร์โทรศัพท์</label>
+      <input type="tel" id="phone" required pattern="[0-9]{9,10}">
+
+      <div id="studentIdWrap" class="hidden">
+        <label>เลขนักเรียน (5 หลัก)</label>
+        <input type="text" id="studentId" maxlength="5" pattern="[0-9]{5}">
+      </div>
+
+      <label>วันที่แจ้ง</label>
+      <input type="datetime-local" id="reportDate" required>
+
+      <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+
+      <label>สถานที่เกิดปัญหา</label>
+      <select id="locationType" required>
+        <option value="">-- เลือกสถานที่ --</option>
+        <option value="classroom">ห้องเรียน</option>
+        <option value="bathroom">ห้องน้ำ</option>
+        <option value="subject">ห้องหมวด</option>
+        <option value="office">ห้องสำนักงาน</option>
+      </select>
+
+      <div id="classroom-fields" class="hidden">
+        <label>เลขห้องเรียน (เช่น 1500, 3988)</label>
+        <input type="text" id="classroom-roomNumber">
+      </div>
+
+      <div id="bathroom-fields" class="hidden">
+        <label>อาคาร</label>
+        <select id="bathroom-building">
+          <option value="">-- เลือกอาคาร --</option>
+          <option value="1">อาคาร 1</option>
+          <option value="2">อาคาร 2</option>
+          <option value="3">อาคาร 3</option>
+          <option value="4">อาคาร 4</option>
+          <option value="5">อาคาร 5</option>
+          <option value="6">อาคาร 6</option>
+        </select>
+        <div id="bathroom-dynamic"></div>
+      </div>
+
+      <div id="subject-fields" class="hidden">
+        <label>กลุ่มสาระๆ</label>
+        <select id="subject-group"></select>
+        <label>ห้อง</label>
+        <select id="subject-room"><option value="">-- เลือกกลุ่มสาระก่อน --</option></select>
+      </div>
+
+      <div id="office-fields" class="hidden">
+        <p class="locked-note">สถานที่: อาคาร 1 ชั้น 2 (ล็อคอัตโนมัติ)</p>
+        <label>ห้อง</label>
+        <select id="office-room"></select>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+
+      <label>ประเภทปัญหาที่พบ</label>
+      <select id="problemType" required></select>
+
+      <div id="problemOtherWrap" class="hidden">
+        <label>ระบุปัญหาอื่นๆ</label>
+        <input type="text" id="problemOther">
+      </div>
+
+      <label>รายละเอียดปัญหาเพิ่มเติม</label>
+      <textarea id="description" required></textarea>
+
+      <label>แนบรูปภาพประกอบ (จำเป็น)</label>
+      <input type="file" id="imageFile" accept="image/*" required>
+      <p class="hint">ระบบจะบีบอัดรูปให้อัตโนมัติเพื่อส่งได้เร็ว โดยยังคงความคมชัดไว้ให้ผู้ดูแลเห็นรายละเอียด</p>
+
+      <p class="field-error hidden" id="form-error">กรุณากรอกข้อมูลให้ครบถ้วนและแนบรูปภาพก่อนส่ง</p>
+
+      <button type="submit" class="btn-primary" id="submit-btn">ส่งเรื่องแจ้งซ่อม</button>
+    </form>
+  </div>
+
+  <div class="overlay hidden" id="success-popup">
+    <div class="popup">
+      <div class="emoji">🎉</div>
+      <h3>รับเรื่องปัญหาเรียบร้อย</h3>
+      <p>จะรีบดำเนินการให้เร็วที่สุดครับ/ค่ะ</p>
+      <button class="btn-primary" onclick="window.location.href='index.html'">กลับหน้าหลัก</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="utils.js"></script>
+  <script src="locations.js"></script>
+  <script>
+    const reporterTypeEl = document.getElementById("reporterType");
+    const studentIdWrap = document.getElementById("studentIdWrap");
+    const studentIdInput = document.getElementById("studentId");
+    const reportDateInput = document.getElementById("reportDate");
+    reportDateInput.value = getBangkokNowForInput();
+
+    reporterTypeEl.addEventListener("change", () => {
+      if (reporterTypeEl.value === "student") {
+        studentIdWrap.classList.remove("hidden");
+        studentIdInput.setAttribute("required", "required");
+      } else {
+        studentIdWrap.classList.add("hidden");
+        studentIdInput.removeAttribute("required");
+      }
+    });
+
+    const problemTypeEl = document.getElementById("problemType");
+    problemTypeEl.innerHTML = optionsHtml(PROBLEM_TYPES, "-- เลือกประเภทปัญหา --");
+    const problemOtherWrap = document.getElementById("problemOtherWrap");
+    const problemOtherInput = document.getElementById("problemOther");
+    problemTypeEl.addEventListener("change", () => {
+      if (problemTypeEl.value === "other") {
+        problemOtherWrap.classList.remove("hidden");
+        problemOtherInput.setAttribute("required", "required");
+      } else {
+        problemOtherWrap.classList.add("hidden");
+        problemOtherInput.removeAttribute("required");
+      }
+    });
+
+    const locationTypeEl = document.getElementById("locationType");
+    const sections = {
+      classroom: document.getElementById("classroom-fields"),
+      bathroom: document.getElementById("bathroom-fields"),
+      subject: document.getElementById("subject-fields"),
+      office: document.getElementById("office-fields")
+    };
+
+    function clearRequired(section) {
+      section.querySelectorAll("input, select").forEach((el) => el.removeAttribute("required"));
+    }
+    function setRequired(section) {
+      section.querySelectorAll("input:not([type=hidden]), select").forEach((el) => el.setAttribute("required", "required"));
+    }
+
+    locationTypeEl.addEventListener("change", () => {
+      Object.values(sections).forEach((s) => { s.classList.add("hidden"); clearRequired(s); });
+      const chosen = sections[locationTypeEl.value];
+      if (chosen) { chosen.classList.remove("hidden"); setRequired(chosen); }
+    });
+
+    const bathroomBuildingEl = document.getElementById("bathroom-building");
+    const bathroomDynamic = document.getElementById("bathroom-dynamic");
+    bathroomBuildingEl.addEventListener("change", () => {
+      renderBathroomFields(bathroomDynamic, bathroomBuildingEl.value, "bathroom");
+      setRequired(sections.bathroom);
+    });
+
+    const subjectGroupEl = document.getElementById("subject-group");
+    const subjectRoomEl = document.getElementById("subject-room");
+    subjectGroupEl.innerHTML = optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --");
+    subjectGroupEl.addEventListener("change", () => {
+      const rooms = SUBJECT_GROUPS[subjectGroupEl.value] || [];
+      subjectRoomEl.innerHTML = optionsHtml(rooms, "-- เลือกห้อง --");
+    });
+
+    const officeRoomEl = document.getElementById("office-room");
+    officeRoomEl.innerHTML = optionsHtml(OFFICE_ROOMS, "-- เลือกห้อง --");
+
+    const form = document.getElementById("report-form");
+    const submitBtn = document.getElementById("submit-btn");
+    const formError = document.getElementById("form-error");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      formError.classList.add("hidden");
+
+      const imageInput = document.getElementById("imageFile");
+      if (!imageInput.files[0]) {
+        formError.textContent = "กรุณาแนบรูปภาพก่อนส่งเรื่อง";
+        formError.classList.remove("hidden");
+        return;
+      }
+      if (!form.checkValidity()) {
+        formError.textContent = "กรุณากรอกข้อมูลให้ครบถ้วน";
+        formError.classList.remove("hidden");
+        form.reportValidity();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "กำลังส่ง...";
+
+      try {
+        const imageUrl = await uploadCompressedImage(imageInput.files[0], "reports");
+
+        const locationType = locationTypeEl.value;
+        let locationDetail = {};
+        if (locationType === "classroom") {
+          locationDetail = { roomNumber: document.getElementById("classroom-roomNumber").value.trim() };
+        } else if (locationType === "bathroom") {
+          const building = bathroomBuildingEl.value;
+          const floorEl = document.getElementById("bathroom-floor");
+          const sideEl = document.getElementById("bathroom-side");
+          const typeEl = document.getElementById("bathroom-type");
+          locationDetail = {
+            building,
+            floor: floorEl ? floorEl.value : "",
+            side: sideEl ? sideEl.value : null,
+            type: typeEl ? typeEl.value : ""
+          };
+        } else if (locationType === "subject") {
+          locationDetail = { group: subjectGroupEl.value, room: subjectRoomEl.value };
+        } else if (locationType === "office") {
+          locationDetail = { room: officeRoomEl.value, location: OFFICE_LOCATION_LABEL };
+        }
+
+        const reporterType = reporterTypeEl.value;
+        const dateVal = reportDateInput.value;
+
+        const payload = {
+          reporterType,
+          email: document.getElementById("email").value.trim(),
+          fullName: document.getElementById("fullName").value.trim(),
+          phone: document.getElementById("phone").value.trim(),
+          studentId: reporterType === "student" ? studentIdInput.value.trim() : null,
+          reportDate: dateVal,
+          month: getMonthFromInputValue(dateVal),
+          locationType,
+          locationDetail,
+          locationLabel: buildLocationLabel(locationType, locationDetail),
+          problemType: problemTypeEl.value,
+          problemOther: problemTypeEl.value === "other" ? problemOtherInput.value.trim() : null,
+          description: document.getElementById("description").value.trim(),
+          imageUrl,
+          status: "received",
+          createdAt: firebase.database.ServerValue.TIMESTAMP,
+          reply: null
+        };
+
+        await db.ref("reports").push(payload);
+
+        document.getElementById("success-popup").classList.remove("hidden");
+        form.reset();
+      } catch (err) {
+        formError.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
+        formError.classList.remove("hidden");
+        console.error(err);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "ส่งเรื่องแจ้งซ่อม";
+      }
+    });
+  </script>
+</body>
+</html>
