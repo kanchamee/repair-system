@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ติดตามสถานะแจ้งซ่อม - Repair System</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="top-nav"><a href="index.html">← หน้าหลัก</a></div>
+
+  <div class="container">
+    <div class="page-title">📋 ติดตามสถานะแจ้งซ่อม</div>
+
+    <div class="status-grid">
+      <div class="status-box" style="background:#FFDD66"><span class="emoji">📥</span>รับเรื่องแล้ว</div>
+      <div class="status-box" style="background:#6EC3F4"><span class="emoji">🔧</span>กำลังดำเนินการ</div>
+      <div class="status-box" style="background:#7FDDA0"><span class="emoji">✅</span>ดำเนินการเสร็จแล้ว</div>
+      <div class="status-box" style="background:#F4877E"><span class="emoji">⏳</span>รออุปกรณ์/รองบประมาณ</div>
+    </div>
+
+    <div class="category-grid" id="category-grid"></div>
+
+    <div class="card" id="search-panel"></div>
+
+    <div id="results"></div>
+  </div>
+
+  <div class="overlay hidden" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close">✕</button>
+    <div class="lightbox-content" onclick="event.stopPropagation()">
+      <img id="lightbox-img" src="">
+      <p id="lightbox-caption"></p>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="utils.js"></script>
+  <script src="locations.js"></script>
+  <script>
+    let selectedCategory = null;
+
+    const categoryGrid = document.getElementById("category-grid");
+    const searchPanel = document.getElementById("search-panel");
+    const resultsEl = document.getElementById("results");
+
+    Object.entries(LOCATION_TYPE_LABEL).forEach(([key, label]) => {
+      const btn = document.createElement("button");
+      btn.className = "category-btn";
+      btn.innerHTML = `<span class="emoji">${LOCATION_TYPE_EMOJI[key]}</span>${label}`;
+      btn.addEventListener("click", () => selectCategory(key));
+      categoryGrid.appendChild(btn);
+    });
+
+    function selectCategory(key) {
+      selectedCategory = key;
+      resultsEl.innerHTML = "";
+      document.querySelectorAll(".category-btn").forEach((b) => b.classList.remove("selected"));
+      [...document.querySelectorAll(".category-btn")].find((b) => b.textContent.includes(LOCATION_TYPE_LABEL[key])).classList.add("selected");
+      renderSearchPanel(key);
+    }
+
+    function renderSearchPanel(key) {
+      if (key === "classroom") {
+        searchPanel.innerHTML = `
+          <label>เลขห้องเรียน</label>
+          <input type="text" id="search-room" placeholder="เช่น 1500, 3988">
+          <button class="btn-primary" id="search-btn">ค้นหาปัญหา</button>`;
+      } else if (key === "bathroom") {
+        searchPanel.innerHTML = `
+          <label>อาคาร</label>
+          <select id="search-building">
+            <option value="">-- เลือกอาคาร --</option>
+            ${[1,2,3,4,5,6].map((b) => `<option value="${b}">อาคาร ${b}</option>`).join("")}
+          </select>
+          <div id="search-bathroom-dynamic"></div>
+          <button class="btn-primary" id="search-btn">ค้นหาปัญหา</button>`;
+        document.getElementById("search-building").addEventListener("change", (e) => {
+          renderBathroomFields(document.getElementById("search-bathroom-dynamic"), e.target.value, "search-bathroom");
+        });
+      } else if (key === "subject") {
+        searchPanel.innerHTML = `
+          <label>กลุ่มสาระๆ</label>
+          <select id="search-group">${optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --")}</select>
+          <label>ห้อง</label>
+          <select id="search-subject-room"><option value="">-- เลือกกลุ่มสาระก่อน --</option></select>
+          <button class="btn-primary" id="search-btn">ค้นหาปัญหา</button>`;
+        document.getElementById("search-group").addEventListener("change", (e) => {
+          const rooms = SUBJECT_GROUPS[e.target.value] || [];
+          document.getElementById("search-subject-room").innerHTML = optionsHtml(rooms, "-- เลือกห้อง --");
+        });
+      } else if (key === "office") {
+        searchPanel.innerHTML = `
+          <p class="locked-note">สถานที่: อาคาร 1 ชั้น 2</p>
+          <label>ห้อง</label>
+          <select id="search-office-room">${optionsHtml(OFFICE_ROOMS, "-- เลือกห้อง --")}</select>
+          <button class="btn-primary" id="search-btn">ค้นหาปัญหา</button>`;
+      }
+      document.getElementById("search-btn").addEventListener("click", runSearch);
+    }
+
+    async function runSearch() {
+      resultsEl.innerHTML = `<p class="empty-note">กำลังค้นหา...</p>`;
+      const snap = await db.ref("reports").once("value");
+      const all = [];
+      snap.forEach((child) => all.push({ id: child.key, ...child.val() }));
+
+      let matched = [];
+      if (selectedCategory === "classroom") {
+        const roomNumber = document.getElementById("search-room").value.trim();
+        matched = all.filter((r) => r.locationType === "classroom" && r.locationDetail && r.locationDetail.roomNumber === roomNumber);
+      } else if (selectedCategory === "bathroom") {
+        const building = document.getElementById("search-building").value;
+        const floorEl = document.getElementById("search-bathroom-floor");
+        const sideEl = document.getElementById("search-bathroom-side");
+        const typeEl = document.getElementById("search-bathroom-type");
+        matched = all.filter((r) => r.locationType === "bathroom" && r.locationDetail &&
+          r.locationDetail.building === building &&
+          r.locationDetail.floor === (floorEl ? floorEl.value : "") &&
+          (r.locationDetail.side || null) === (sideEl ? sideEl.value : null) &&
+          r.locationDetail.type === (typeEl ? typeEl.value : ""));
+      } else if (selectedCategory === "subject") {
+        const group = document.getElementById("search-group").value;
+        const room = document.getElementById("search-subject-room").value;
+        matched = all.filter((r) => r.locationType === "subject" && r.locationDetail && r.locationDetail.group === group && r.locationDetail.room === room);
+      } else if (selectedCategory === "office") {
+        const room = document.getElementById("search-office-room").value;
+        matched = all.filter((r) => r.locationType === "office" && r.locationDetail && r.locationDetail.room === room);
+      }
+
+      matched.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      renderResults(matched);
+    }
+
+    function renderResults(list) {
+      if (!list.length) {
+        resultsEl.innerHTML = `<p class="empty-note">ไม่พบรายการแจ้งซ่อมที่ตรงกับการค้นหา</p>`;
+        return;
+      }
+      resultsEl.innerHTML = list.map((r) => {
+        const meta = getStatusMeta(r.status);
+        const problemLabel = r.problemType === "other" ? (r.problemOther || "อื่นๆ") : PROBLEM_TYPES[r.problemType];
+        return `
+          <div class="report-card" style="border-left-color:${meta.border}">
+            <div class="report-card-head">
+              <div class="report-status-pill" style="background:${meta.color}22;color:${meta.border}">${meta.emoji} ${meta.label}</div>
+            </div>
+            <div class="report-field"><b>สถานที่:</b> ${escapeHtml(r.locationLabel)}</div>
+            <div class="report-field"><b>ผู้แจ้ง:</b> ${escapeHtml(r.fullName)} (${r.reporterType === "teacher" ? "ครู/บุคลากร" : "นักเรียน"})</div>
+            <div class="report-field"><b>อีเมล:</b> ${escapeHtml(r.email)}</div>
+            <div class="report-field"><b>วันที่แจ้ง:</b> ${formatDateThai(r.reportDate)}</div>
+            <div class="report-field"><b>ประเภทปัญหา:</b> ${problemLabel}</div>
+            <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.description)}</div>
+            <img class="report-thumb" src="${r.imageUrl}" onclick="openLightbox('${r.imageUrl}','รูปของปัญหา')">
+            <div class="report-thumb-caption">รูปของปัญหา (กดเพื่อขยาย)</div>
+            ${r.reply ? `
+              <div class="reply-box">
+                <h4>💬 การตอบกลับจากช่าง</h4>
+                <div class="report-field"><b>ช่าง:</b> ${escapeHtml(r.reply.technician)}</div>
+                <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.reply.description)}</div>
+                <img class="report-thumb" src="${r.reply.imageUrl}" onclick="openLightbox('${r.reply.imageUrl}','รูปที่ช่างส่งตอบกลับ')">
+                <div class="report-thumb-caption">รูปที่ช่างส่งตอบกลับ (กดเพื่อขยาย)</div>
+              </div>` : ""}
+          </div>`;
+      }).join("");
+    }
+  </script>
+</body>
+</html>
