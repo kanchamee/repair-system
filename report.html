@@ -117,7 +117,6 @@
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="utils.js"></script>
   <script src="locations.js"></script>
@@ -138,6 +137,7 @@
       }
     });
 
+    // ===== ประเภทปัญหา =====
     const problemTypeEl = document.getElementById("problemType");
     problemTypeEl.innerHTML = optionsHtml(PROBLEM_TYPES, "-- เลือกประเภทปัญหา --");
     const problemOtherWrap = document.getElementById("problemOtherWrap");
@@ -152,6 +152,7 @@
       }
     });
 
+    // ===== สถานที่เกิดปัญหา =====
     const locationTypeEl = document.getElementById("locationType");
     const sections = {
       classroom: document.getElementById("classroom-fields"),
@@ -173,6 +174,7 @@
       if (chosen) { chosen.classList.remove("hidden"); setRequired(chosen); }
     });
 
+    // ห้องน้ำ
     const bathroomBuildingEl = document.getElementById("bathroom-building");
     const bathroomDynamic = document.getElementById("bathroom-dynamic");
     bathroomBuildingEl.addEventListener("change", () => {
@@ -180,6 +182,7 @@
       setRequired(sections.bathroom);
     });
 
+    // ห้องหมวด
     const subjectGroupEl = document.getElementById("subject-group");
     const subjectRoomEl = document.getElementById("subject-room");
     subjectGroupEl.innerHTML = optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --");
@@ -188,9 +191,11 @@
       subjectRoomEl.innerHTML = optionsHtml(rooms, "-- เลือกห้อง --");
     });
 
+    // ห้องสำนักงาน
     const officeRoomEl = document.getElementById("office-room");
     officeRoomEl.innerHTML = optionsHtml(OFFICE_ROOMS, "-- เลือกห้อง --");
 
+    // ===== ส่งฟอร์ม =====
     const form = document.getElementById("report-form");
     const submitBtn = document.getElementById("submit-btn");
     const formError = document.getElementById("form-error");
