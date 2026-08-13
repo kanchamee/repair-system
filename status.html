@@ -41,6 +41,7 @@
   <script src="utils.js"></script>
   <script src="locations.js"></script>
   <script>
+    // ไม่จำการค้นหาครั้งก่อนเมื่อกลับมาหน้านี้ใหม่ (state เริ่มต้นทุกครั้ง)
     let selectedCategory = null;
 
     const categoryGrid = document.getElementById("category-grid");
@@ -57,7 +58,7 @@
 
     function selectCategory(key) {
       selectedCategory = key;
-      resultsEl.innerHTML = "";
+      resultsEl.innerHTML = ""; // เปลี่ยนประเภทแล้วเคลียร์ผลลัพธ์เก่าทันที ไม่ค้าง
       document.querySelectorAll(".category-btn").forEach((b) => b.classList.remove("selected"));
       [...document.querySelectorAll(".category-btn")].find((b) => b.textContent.includes(LOCATION_TYPE_LABEL[key])).classList.add("selected");
       renderSearchPanel(key);
@@ -109,7 +110,7 @@
         snap = await db.ref("reports").once("value");
       } catch (err) {
         console.error(err);
-        resultsEl.innerHTML = `<p class="empty-note">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่ภายหลัง</p>`;
+        resultsEl.innerHTML = `<p class="empty-note">เชื่อมต่อฐานข้อมูลไม่ได้: ${err && err.message ? err.message : "ไม่ทราบสาเหตุ"}</p>`;
         return;
       }
       const all = [];
