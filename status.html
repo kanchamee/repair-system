@@ -104,7 +104,14 @@
 
     async function runSearch() {
       resultsEl.innerHTML = `<p class="empty-note">กำลังค้นหา...</p>`;
-      const snap = await db.ref("reports").once("value");
+      let snap;
+      try {
+        snap = await db.ref("reports").once("value");
+      } catch (err) {
+        console.error(err);
+        resultsEl.innerHTML = `<p class="empty-note">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่ภายหลัง</p>`;
+        return;
+      }
       const all = [];
       snap.forEach((child) => all.push({ id: child.key, ...child.val() }));
 
