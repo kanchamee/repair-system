@@ -38,7 +38,7 @@
       </div>
 
       <label>วันที่แจ้ง</label>
-      <input type="datetime-local" id="reportDate" required>
+      <input type="date" id="reportDate" required>
 
       <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
 
@@ -71,7 +71,7 @@
       </div>
 
       <div id="subject-fields" class="hidden">
-        <label>กลุ่มสาระฯ</label>
+        <label>กลุ่มสาระๆ</label>
         <select id="subject-group"></select>
         <label>ห้อง</label>
         <select id="subject-room"><option value="">-- เลือกกลุ่มสาระก่อน --</option></select>
@@ -292,7 +292,7 @@
         problemOtherWrap.classList.add("hidden");
         reportDateInput.value = getBangkokNowForInput();
       } catch (err) {
-        formError.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
+        formError.textContent = "เกิดข้อผิดพลาด: " + (err && err.message ? err.message : "กรุณาลองใหม่อีกครั้ง");
         formError.classList.remove("hidden");
         console.error(err);
       } finally {
