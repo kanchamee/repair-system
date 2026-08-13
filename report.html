@@ -17,11 +17,11 @@
 
     <form class="card" id="report-form">
       <label>สถานะผู้แจ้ง</label>
-      <select id="reporterType" required>
-        <option value="">-- เลือกสถานะ --</option>
-        <option value="teacher">ครู/บุคลากร</option>
-        <option value="student">นักเรียน</option>
-      </select>
+      <div class="choice-grid choice-grid-2" id="reporterType-choices">
+        <button type="button" class="choice-btn" data-value="teacher"><span class="choice-emoji">🧑‍🏫</span>ครู/บุคลากร</button>
+        <button type="button" class="choice-btn" data-value="student"><span class="choice-emoji">🎒</span>นักเรียน</button>
+      </div>
+      <input type="hidden" id="reporterType" required>
 
       <label>อีเมล</label>
       <input type="email" id="email" required>
@@ -43,13 +43,13 @@
       <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
 
       <label>สถานที่เกิดปัญหา</label>
-      <select id="locationType" required>
-        <option value="">-- เลือกสถานที่ --</option>
-        <option value="classroom">ห้องเรียน</option>
-        <option value="bathroom">ห้องน้ำ</option>
-        <option value="subject">ห้องหมวด</option>
-        <option value="office">ห้องสำนักงาน</option>
-      </select>
+      <div class="choice-grid choice-grid-4" id="locationType-choices">
+        <button type="button" class="choice-btn" data-value="classroom"><span class="choice-emoji">🏫</span>ห้องเรียน</button>
+        <button type="button" class="choice-btn" data-value="bathroom"><span class="choice-emoji">🚻</span>ห้องน้ำ</button>
+        <button type="button" class="choice-btn" data-value="subject"><span class="choice-emoji">📚</span>ห้องหมวด</button>
+        <button type="button" class="choice-btn" data-value="office"><span class="choice-emoji">🗄️</span>ห้องสำนักงาน</button>
+      </div>
+      <input type="hidden" id="locationType" required>
 
       <div id="classroom-fields" class="hidden">
         <label>เลขห้องเรียน (เช่น 1500, 3988)</label>
@@ -71,7 +71,7 @@
       </div>
 
       <div id="subject-fields" class="hidden">
-        <label>กลุ่มสาระๆ</label>
+        <label>กลุ่มสาระฯ</label>
         <select id="subject-group"></select>
         <label>ห้อง</label>
         <select id="subject-room"><option value="">-- เลือกกลุ่มสาระก่อน --</option></select>
@@ -121,6 +121,21 @@
   <script src="utils.js"></script>
   <script src="locations.js"></script>
   <script>
+    function setupChoiceGroup(containerId, hiddenInputId) {
+      const container = document.getElementById(containerId);
+      const hiddenInput = document.getElementById(hiddenInputId);
+      container.querySelectorAll(".choice-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          container.querySelectorAll(".choice-btn").forEach((b) => b.classList.remove("selected"));
+          btn.classList.add("selected");
+          hiddenInput.value = btn.dataset.value;
+          hiddenInput.dispatchEvent(new Event("change"));
+        });
+      });
+    }
+    setupChoiceGroup("reporterType-choices", "reporterType");
+    setupChoiceGroup("locationType-choices", "locationType");
+
     const reporterTypeEl = document.getElementById("reporterType");
     const studentIdWrap = document.getElementById("studentIdWrap");
     const studentIdInput = document.getElementById("studentId");
@@ -271,6 +286,11 @@
 
         document.getElementById("success-popup").classList.remove("hidden");
         form.reset();
+        document.querySelectorAll(".choice-btn.selected").forEach((b) => b.classList.remove("selected"));
+        Object.values(sections).forEach((s) => { s.classList.add("hidden"); clearRequired(s); });
+        studentIdWrap.classList.add("hidden");
+        problemOtherWrap.classList.add("hidden");
+        reportDateInput.value = getBangkokNowForInput();
       } catch (err) {
         formError.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
         formError.classList.remove("hidden");

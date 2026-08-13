@@ -28,26 +28,70 @@ body {
 .container-wide { max-width: 1000px; margin: 0 auto; padding: 24px 16px 60px; }
 
 /* ===== หน้าแรก ===== */
-.home-hero { text-align: center; padding: 60px 20px 40px; }
+.home-page { display: flex; align-items: center; justify-content: center; min-height: 86vh; }
+.home-card {
+  position: relative; overflow: hidden; background: var(--card-bg);
+  border-radius: 32px; padding: 52px 36px 44px; max-width: 460px; width: 100%;
+  box-shadow: 0 24px 64px rgba(120, 100, 180, 0.22);
+  animation: fadeInUp 0.6s ease;
+}
+.home-card::before {
+  content: ""; position: absolute; top: -70px; right: -70px; width: 190px; height: 190px;
+  border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--purple)); opacity: 0.28;
+}
+.home-card::after {
+  content: ""; position: absolute; bottom: -80px; left: -80px; width: 210px; height: 210px;
+  border-radius: 50%; background: linear-gradient(135deg, var(--green), var(--pink)); opacity: 0.28;
+}
+.home-hero { position: relative; text-align: center; padding: 0 6px 8px; }
 .home-hero h1 {
-  font-size: 2.4rem; font-weight: 700; margin: 0;
+  font-size: 2.6rem; font-weight: 700; margin: 0;
   background: linear-gradient(90deg, #6EC3F4, #C39BF0, #F79BC0);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .home-hero p { font-size: 1.15rem; color: var(--text-muted); margin-top: 6px; }
-.home-buttons { display: flex; flex-direction: column; gap: 18px; max-width: 420px; margin: 40px auto 0; }
+.home-buttons { position: relative; display: flex; flex-direction: column; gap: 16px; margin: 36px auto 0; }
 
 .btn {
-  display: block; text-decoration: none; text-align: center; padding: 18px 24px;
-  border-radius: var(--radius); font-size: 1.15rem; font-weight: 600; color: var(--text-dark);
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  text-decoration: none; text-align: center; padding: 18px 24px;
+  border-radius: var(--radius); font-size: 1.1rem; font-weight: 600; color: var(--text-dark);
   box-shadow: var(--shadow); border: none; cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
-.btn:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(120,100,180,0.2); }
-.btn:active { transform: translateY(0); }
+.btn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 14px 30px rgba(120,100,180,0.28); }
+.btn:active { transform: translateY(0) scale(1); }
 .btn-report { background: linear-gradient(135deg, var(--blue), var(--purple)); }
 .btn-status { background: linear-gradient(135deg, var(--green), var(--blue)); }
 .btn-admin  { background: linear-gradient(135deg, var(--pink), var(--purple)); }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ===== ตัวเลือกแบบเลือกได้ทีละหนึ่ง (ใช้แทน select ในฟอร์มแจ้งซ่อม) ===== */
+.choice-grid { display: grid; gap: 10px; margin-bottom: 4px; }
+.choice-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.choice-grid-4 { grid-template-columns: repeat(2, 1fr); }
+.choice-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 10px; border-radius: 14px; border: 2px solid #E5DFF5;
+  background: #FBFAFF; font-family: 'Kanit', sans-serif; font-size: 0.95rem; font-weight: 500;
+  cursor: pointer; color: var(--text-dark); transition: all 0.15s ease; text-align: center;
+}
+.choice-btn .choice-emoji { font-size: 1.3rem; }
+.choice-btn:hover { border-color: var(--blue-dark); transform: translateY(-2px); }
+.choice-btn.selected {
+  border-color: var(--blue-dark); color: white;
+  background: linear-gradient(135deg, var(--blue-dark), var(--purple));
+  box-shadow: 0 8px 18px rgba(110,195,244,0.35);
+}
 
 /* ===== การ์ด / ฟอร์มทั่วไป ===== */
 .card { background: var(--card-bg); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
