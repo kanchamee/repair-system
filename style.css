@@ -18,6 +18,7 @@
 
 body {
   margin: 0;
+  overflow-x: hidden;
   font-family: 'Kanit', sans-serif;
   background: linear-gradient(135deg, #EAF6FD 0%, #F6ECFB 50%, #FDEFF6 100%);
   color: var(--text-dark);
@@ -98,9 +99,10 @@ body {
 label { display: block; font-weight: 500; margin: 14px 0 6px; color: var(--text-dark); }
 
 input[type="text"], input[type="email"], input[type="tel"], input[type="number"],
-input[type="datetime-local"], input[type="file"], select, textarea {
+input[type="date"], input[type="datetime-local"], input[type="file"], select, textarea {
   width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #E5DFF5;
   font-family: 'Kanit', sans-serif; font-size: 1rem; background: #FBFAFF; transition: border-color 0.15s;
+  max-width: 100%;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue-dark); }
 textarea { resize: vertical; min-height: 90px; }
@@ -190,4 +192,7 @@ textarea { resize: vertical; min-height: 90px; }
   .status-grid { grid-template-columns: repeat(2, 1fr); }
   .home-hero h1 { font-size: 1.9rem; }
   .admin-status-grid { grid-template-columns: repeat(2, 1fr); }
+  .choice-btn { font-size: 0.85rem; padding: 12px 6px; gap: 6px; }
+  .choice-btn .choice-emoji { font-size: 1.1rem; }
+  .home-card { padding: 40px 20px 32px; }
 }

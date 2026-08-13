@@ -29,15 +29,15 @@ const MONTH_NAMES = {
   "09": "กันยายน", "10": "ตุลาคม", "11": "พฤศจิกายน", "12": "ธันวาคม"
 };
 
-// ===== วันที่ปัจจุบันแบบไทย สำหรับ input datetime-local (ล็อคโซนเวลากรุงเทพ) =====
+// ===== วันที่ปัจจุบันแบบไทย สำหรับ input date (ล็อคโซนเวลากรุงเทพ) — ใช้แค่วันที่ ไม่ใช้เวลา =====
 function getBangkokNowForInput() {
   const now = new Date();
   const bangkok = new Date(now.getTime() + (7 * 60 - now.getTimezoneOffset()) * 60000);
-  return bangkok.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+  return bangkok.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
 function getMonthFromInputValue(value) {
-  // value: YYYY-MM-DDTHH:mm -> คืนค่าเดือนแบบ "MM"
+  // value: YYYY-MM-DD -> คืนค่าเดือนแบบ "MM"
   if (!value || value.length < 7) return "01";
   return value.slice(5, 7);
 }
@@ -45,8 +45,7 @@ function getMonthFromInputValue(value) {
 function formatDateThai(isoOrTimestamp) {
   const d = new Date(isoOrTimestamp);
   return d.toLocaleString("th-TH", {
-    year: "numeric", month: "short", day: "numeric",
-    hour: "2-digit", minute: "2-digit"
+    year: "numeric", month: "short", day: "numeric"
   });
 }
 
