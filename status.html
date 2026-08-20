@@ -83,7 +83,7 @@
         });
       } else if (key === "subject") {
         searchPanel.innerHTML = `
-          <label>กลุ่มสาระฯ</label>
+          <label>กลุ่มสาระๆ</label>
           <select id="search-group">${optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --")}</select>
           <label>ห้อง</label>
           <select id="search-subject-room"><option value="">-- เลือกกลุ่มสาระก่อน --</option></select>
@@ -109,7 +109,7 @@
         snap = await db.ref("reports").once("value");
       } catch (err) {
         console.error(err);
-        resultsEl.innerHTML = `<p class="empty-note">เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล: ${escapeHtml(err.message || String(err))}</p>`;
+        resultsEl.innerHTML = `<p class="empty-note">เกิดข้อผิดพลาด: ${escapeHtml(err.message || "เชื่อมต่อฐานข้อมูลไม่ได้")}</p>`;
         return;
       }
       const all = [];
