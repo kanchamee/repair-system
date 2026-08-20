@@ -41,7 +41,6 @@
   <script src="utils.js"></script>
   <script src="locations.js"></script>
   <script>
-    // ไม่จำการค้นหาครั้งก่อนเมื่อกลับมาหน้านี้ใหม่ (state เริ่มต้นทุกครั้ง)
     let selectedCategory = null;
 
     const categoryGrid = document.getElementById("category-grid");
@@ -58,7 +57,7 @@
 
     function selectCategory(key) {
       selectedCategory = key;
-      resultsEl.innerHTML = ""; // เปลี่ยนประเภทแล้วเคลียร์ผลลัพธ์เก่าทันที ไม่ค้าง
+      resultsEl.innerHTML = "";
       document.querySelectorAll(".category-btn").forEach((b) => b.classList.remove("selected"));
       [...document.querySelectorAll(".category-btn")].find((b) => b.textContent.includes(LOCATION_TYPE_LABEL[key])).classList.add("selected");
       renderSearchPanel(key);
@@ -84,7 +83,7 @@
         });
       } else if (key === "subject") {
         searchPanel.innerHTML = `
-          <label>กลุ่มสาระๆ</label>
+          <label>กลุ่มสาระฯ</label>
           <select id="search-group">${optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --")}</select>
           <label>ห้อง</label>
           <select id="search-subject-room"><option value="">-- เลือกกลุ่มสาระก่อน --</option></select>
@@ -110,7 +109,7 @@
         snap = await db.ref("reports").once("value");
       } catch (err) {
         console.error(err);
-        resultsEl.innerHTML = `<p class="empty-note">เชื่อมต่อฐานข้อมูลไม่ได้: ${err && err.message ? err.message : "ไม่ทราบสาเหตุ"} (ตรวจสอบ Rules ของ Firebase Realtime Database)</p>`;
+        resultsEl.innerHTML = `<p class="empty-note">เชื่อมต่อฐานข้อมูลไม่ได้: ${escapeHtml(err.message || String(err))}</p>`;
         return;
       }
       const all = [];
