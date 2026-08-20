@@ -81,12 +81,13 @@ body {
 .choice-grid-2 { grid-template-columns: repeat(2, 1fr); }
 .choice-grid-4 { grid-template-columns: repeat(2, 1fr); }
 .choice-btn {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 14px 10px; border-radius: 14px; border: 2px solid #E5DFF5;
-  background: #FBFAFF; font-family: 'Kanit', sans-serif; font-size: 0.95rem; font-weight: 500;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 14px 6px; border-radius: 14px; border: 2px solid #E5DFF5; min-width: 0;
+  background: #FBFAFF; font-family: 'Kanit', sans-serif; font-size: 0.9rem; font-weight: 500;
   cursor: pointer; color: var(--text-dark); transition: all 0.15s ease; text-align: center;
+  line-height: 1.3; white-space: normal; overflow-wrap: break-word; word-break: break-word;
 }
-.choice-btn .choice-emoji { font-size: 1.3rem; }
+.choice-btn .choice-emoji { font-size: 1.5rem; line-height: 1; }
 .choice-btn:hover { border-color: var(--blue-dark); transform: translateY(-2px); }
 .choice-btn.selected {
   border-color: var(--blue-dark); color: white;

@@ -220,6 +220,16 @@
       formError.classList.add("hidden");
 
       const imageInput = document.getElementById("imageFile");
+      if (!reporterTypeEl.value) {
+        formError.textContent = "กรุณาเลือกสถานะผู้แจ้ง";
+        formError.classList.remove("hidden");
+        return;
+      }
+      if (!locationTypeEl.value) {
+        formError.textContent = "กรุณาเลือกสถานที่เกิดปัญหา";
+        formError.classList.remove("hidden");
+        return;
+      }
       if (!imageInput.files[0]) {
         formError.textContent = "กรุณาแนบรูปภาพก่อนส่งเรื่อง";
         formError.classList.remove("hidden");
@@ -292,9 +302,9 @@
         problemOtherWrap.classList.add("hidden");
         reportDateInput.value = getBangkokNowForInput();
       } catch (err) {
-        console.error(err);
-        formError.textContent = "ส่งไม่สำเร็จ: " + (err.message || "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
+        formError.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
         formError.classList.remove("hidden");
+        console.error(err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = "ส่งเรื่องแจ้งซ่อม";
