@@ -110,7 +110,7 @@
         snap = await db.ref("reports").once("value");
       } catch (err) {
         console.error(err);
-        resultsEl.innerHTML = `<p class="empty-note">เชื่อมต่อฐานข้อมูลไม่ได้: ${err && err.message ? err.message : "ไม่ทราบสาเหตุ"}</p>`;
+        resultsEl.innerHTML = `<p class="empty-note">เชื่อมต่อฐานข้อมูลไม่ได้: ${err && err.message ? err.message : "ไม่ทราบสาเหตุ"} (ตรวจสอบ Rules ของ Firebase Realtime Database)</p>`;
         return;
       }
       const all = [];
