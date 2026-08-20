@@ -71,7 +71,7 @@
       </div>
 
       <div id="subject-fields" class="hidden">
-        <label>กลุ่มสาระๆ</label>
+        <label>กลุ่มสาระฯ</label>
         <select id="subject-group"></select>
         <label>ห้อง</label>
         <select id="subject-room"><option value="">-- เลือกกลุ่มสาระก่อน --</option></select>
@@ -293,7 +293,7 @@
         reportDateInput.value = getBangkokNowForInput();
       } catch (err) {
         console.error(err);
-        formError.textContent = "เกิดข้อผิดพลาด: " + (err && err.message ? err.message : "ไม่ทราบสาเหตุ กรุณาลองใหม่อีกครั้ง");
+        formError.textContent = "เกิดข้อผิดพลาด: " + (err && err.message ? err.message : "กรุณาลองใหม่อีกครั้ง");
         formError.classList.remove("hidden");
       } finally {
         submitBtn.disabled = false;
