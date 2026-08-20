@@ -292,9 +292,9 @@
         problemOtherWrap.classList.add("hidden");
         reportDateInput.value = getBangkokNowForInput();
       } catch (err) {
-        console.error(err);
-        formError.textContent = "เกิดข้อผิดพลาด: " + (err && err.message ? err.message : "กรุณาลองใหม่อีกครั้ง");
+        formError.textContent = "เกิดข้อผิดพลาด: " + (err.message || String(err));
         formError.classList.remove("hidden");
+        console.error(err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = "ส่งเรื่องแจ้งซ่อม";
