@@ -112,11 +112,21 @@
     let currentDeleteId = null;
     let currentReplyId = null;
 
+    let adminLoaded = false;
     function initAdmin() {
+      document.getElementById("admin-results").innerHTML = `<p class="empty-note">กำลังโหลดข้อมูล...</p>`;
       db.ref("reports").on("value", (snap) => {
         allReports = [];
         snap.forEach((child) => allReports.push({ id: child.key, ...child.val() }));
         renderStatusCounts();
+        if (!adminLoaded) {
+          adminLoaded = true;
+          const all = allReports.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          renderAdminResults(all);
+        }
+      }, (err) => {
+        console.error(err);
+        document.getElementById("admin-results").innerHTML = `<p class="empty-note">เชื่อมต่อฐานข้อมูลไม่ได้ กรุณาตรวจสอบ Rules ของ Firebase Realtime Database</p>`;
       });
       renderStatusGrid();
       renderFilterSub();
