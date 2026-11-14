@@ -197,3 +197,28 @@ textarea { resize: vertical; min-height: 90px; }
   .choice-btn .choice-emoji { font-size: 1.1rem; }
   .home-card { padding: 40px 20px 32px; }
 }
+
+/* ===== พิมพ์รายงาน (Print / Save as PDF) ===== */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .top-nav, .filter-row, .card, #admin-status-grid, .report-actions, .overlay, button {
+    display: none !important;
+  }
+  .container-wide {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .report-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    border-left: 6px solid #888 !important;
+    page-break-inside: avoid;
+    margin-bottom: 20px !important;
+  }
+  .report-thumb {
+    max-width: 140px !important;
+  }
+}

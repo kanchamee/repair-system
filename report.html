@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app; base-uri 'self'; form-action 'self';">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
 <title>แจ้งซ่อมอุปกรณ์ - Repair System</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -24,17 +27,17 @@
       <input type="hidden" id="reporterType" required>
 
       <label>อีเมล</label>
-      <input type="email" id="email" required>
+      <input type="email" id="email" maxlength="100" required>
 
       <label>ชื่อ-นามสกุล</label>
-      <input type="text" id="fullName" required>
+      <input type="text" id="fullName" maxlength="100" required>
 
-      <label>เบอร์โทรศัพท์</label>
-      <input type="tel" id="phone" required pattern="[0-9]{9,10}">
+      <label>เบอร์โทรศัพท์ (9-10 หลัก)</label>
+      <input type="tel" id="phone" maxlength="10" pattern="0[0-9]{8,9}" placeholder="0xxxxxxxxx" required>
 
       <div id="studentIdWrap" class="hidden">
-        <label>เลขนักเรียน (5 หลัก)</label>
-        <input type="text" id="studentId" maxlength="5" pattern="[0-9]{5}">
+        <label>เลขประจำตัวนักเรียน (5 หลัก)</label>
+        <input type="text" id="studentId" maxlength="5" pattern="[0-9]{5}" placeholder="xxxxx">
       </div>
 
       <label>วันที่แจ้ง</label>
@@ -53,7 +56,7 @@
 
       <div id="classroom-fields" class="hidden">
         <label>เลขห้องเรียน (เช่น 1500, 3988)</label>
-        <input type="text" id="classroom-roomNumber">
+        <input type="text" id="classroom-roomNumber" maxlength="20">
       </div>
 
       <div id="bathroom-fields" class="hidden">
@@ -90,14 +93,14 @@
 
       <div id="problemOtherWrap" class="hidden">
         <label>ระบุปัญหาอื่นๆ</label>
-        <input type="text" id="problemOther">
+        <input type="text" id="problemOther" maxlength="100">
       </div>
 
       <label>รายละเอียดปัญหาเพิ่มเติม</label>
-      <textarea id="description" required></textarea>
+      <textarea id="description" maxlength="1000" required></textarea>
 
-      <label>แนบรูปภาพประกอบ (จำเป็น)</label>
-      <input type="file" id="imageFile" accept="image/*" required>
+      <label>แนบรูปภาพประกอบ (จำเป็น, ไฟล์ JPG/PNG/WebP ขนาดไม่เกิน 10MB)</label>
+      <input type="file" id="imageFile" accept="image/jpeg,image/png,image/webp" required>
       <p class="hint">ระบบจะบีบอัดรูปให้อัตโนมัติเพื่อส่งได้เร็ว โดยยังคงความคมชัดไว้ให้ผู้ดูแลเห็นรายละเอียด</p>
 
       <p class="field-error hidden" id="form-error">กรุณากรอกข้อมูลให้ครบถ้วนและแนบรูปภาพก่อนส่ง</p>
@@ -115,8 +118,8 @@
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js" crossorigin="anonymous"></script>
   <script src="firebase-config.js"></script>
   <script src="utils.js"></script>
   <script src="locations.js"></script>
@@ -149,6 +152,7 @@
       } else {
         studentIdWrap.classList.add("hidden");
         studentIdInput.removeAttribute("required");
+        studentIdInput.value = "";
       }
     });
 
@@ -164,6 +168,7 @@
       } else {
         problemOtherWrap.classList.add("hidden");
         problemOtherInput.removeAttribute("required");
+        problemOtherInput.value = "";
       }
     });
 
@@ -230,13 +235,22 @@
         formError.classList.remove("hidden");
         return;
       }
-      if (!imageInput.files[0]) {
+      if (!imageInput.files || !imageInput.files[0]) {
         formError.textContent = "กรุณาแนบรูปภาพก่อนส่งเรื่อง";
         formError.classList.remove("hidden");
         return;
       }
+
+      // ตรวจสอบความปลอดภัยของไฟล์รูปภาพ (ขนาดและนามสกุล)
+      const fileCheck = validateImageFile(imageInput.files[0]);
+      if (!fileCheck.valid) {
+        formError.textContent = fileCheck.error;
+        formError.classList.remove("hidden");
+        return;
+      }
+
       if (!form.checkValidity()) {
-        formError.textContent = "กรุณากรอกข้อมูลให้ครบถ้วน";
+        formError.textContent = "กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง";
         formError.classList.remove("hidden");
         form.reportValidity();
         return;
@@ -302,7 +316,7 @@
         problemOtherWrap.classList.add("hidden");
         reportDateInput.value = getBangkokNowForInput();
       } catch (err) {
-        formError.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง";
+        formError.textContent = "เกิดข้อผิดพลาด: " + (err.message || "กรุณาลองใหม่อีกครั้ง");
         formError.classList.remove("hidden");
         console.error(err);
       } finally {

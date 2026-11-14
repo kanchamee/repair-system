@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "reports": {
+      ".read": true,
+      ".indexOn": ["locationType", "status", "month", "createdAt"],
+      "$reportId": {
+        ".write": "(!data.exists() && newData.exists()) || (data.exists() && newData.exists()) || (data.exists() && !newData.exists())",
+        ".validate": "newData.hasChildren(['reporterType', 'email', 'fullName', 'phone', 'reportDate', 'locationType', 'problemType', 'description', 'imageUrl', 'status']) && (newData.child('reporterType').val() === 'teacher' || newData.child('reporterType').val() === 'student') && (newData.child('status').val() === 'received' || newData.child('status').val() === 'inprogress' || newData.child('status').val() === 'done' || newData.child('status').val() === 'waiting') && newData.child('fullName').isString() && newData.child('fullName').val().length <= 100 && newData.child('email').isString() && newData.child('email').val().length <= 100 && newData.child('phone').isString() && newData.child('phone').val().length <= 20 && newData.child('description').isString() && newData.child('description').val().length <= 1000 && (newData.child('locationType').val() === 'classroom' || newData.child('locationType').val() === 'bathroom' || newData.child('locationType').val() === 'subject' || newData.child('locationType').val() === 'office') && (newData.child('problemType').val() === 'electric' || newData.child('problemType').val() === 'plumbing' || newData.child('problemType').val() === 'fan' || newData.child('problemType').val() === 'aircon' || newData.child('problemType').val() === 'other')"
+      }
+    }
+  }
+}

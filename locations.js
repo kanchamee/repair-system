@@ -47,28 +47,30 @@ const LOCATION_TYPE_EMOJI = {
   classroom: "🏫", bathroom: "🚻", subject: "📚", office: "🗄️"
 };
 
-// ===== สร้าง label แสดงผลของสถานที่จาก locationDetail =====
+// ===== สร้าง label แสดงผลของสถานที่จาก locationDetail (ป้องกันกรณีข้อมูลไม่สมบูรณ์) =====
 function buildLocationLabel(locationType, detail) {
+  if (!detail || typeof detail !== "object") return "";
   if (locationType === "classroom") {
-    return `ห้องเรียน ${detail.roomNumber}`;
+    return detail.roomNumber ? `ห้องเรียน ${detail.roomNumber}` : "ห้องเรียน";
   }
   if (locationType === "bathroom") {
-    let s = `ห้องน้ำ อาคาร ${detail.building} ชั้น ${detail.floor}`;
+    let s = `ห้องน้ำ อาคาร ${detail.building || ""} ชั้น ${detail.floor || ""}`;
     if (detail.side) s += ` (${detail.side})`;
-    s += ` - ห้องน้ำ${detail.type}`;
+    s += ` - ห้องน้ำ${detail.type || ""}`;
     return s;
   }
   if (locationType === "subject") {
-    return `ห้องหมวด${detail.group} - ${detail.room}`;
+    return `ห้องหมวด${detail.group || ""} - ${detail.room || ""}`;
   }
   if (locationType === "office") {
-    return `${detail.room} (${OFFICE_LOCATION_LABEL})`;
+    return `${detail.room || ""} (${OFFICE_LOCATION_LABEL})`;
   }
   return "";
 }
 
 // ===== วาด dropdown ของห้องน้ำ ตามอาคารที่เลือก =====
 function renderBathroomFields(container, building, prefix) {
+  if (!container) return;
   const cfg = BATHROOM_BUILDINGS[building];
   if (!cfg) { container.innerHTML = ""; return; }
 
@@ -79,18 +81,32 @@ function renderBathroomFields(container, building, prefix) {
   } else {
     html += `<label>ชั้น</label>
       <select id="${prefix}-floor" required>
-        ${optionsHtml(cfg.floors.map(String), "-- เลือกชั้น --")}
+        ${typeof optionsHtml === "function" ? optionsHtml(cfg.floors.map(String), "-- เลือกชั้น --") : ""}
       </select>`;
   }
   if (cfg.sides) {
     html += `<label>ฝั่ง</label>
       <select id="${prefix}-side" required>
-        ${optionsHtml(cfg.sides, "-- เลือกฝั่ง --")}
+        ${typeof optionsHtml === "function" ? optionsHtml(cfg.sides, "-- เลือกฝั่ง --") : ""}
       </select>`;
   }
   html += `<label>ประเภทห้องน้ำ</label>
     <select id="${prefix}-type" required>
-      ${optionsHtml(cfg.types, "-- เลือกประเภท --")}
+      ${typeof optionsHtml === "function" ? optionsHtml(cfg.types, "-- เลือกประเภท --") : ""}
     </select>`;
   container.innerHTML = html;
+}
+
+// Export for Node.js test environment
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    BATHROOM_BUILDINGS,
+    SUBJECT_GROUPS,
+    OFFICE_LOCATION_LABEL,
+    OFFICE_ROOMS,
+    LOCATION_TYPE_LABEL,
+    LOCATION_TYPE_EMOJI,
+    buildLocationLabel,
+    renderBathroomFields
+  };
 }

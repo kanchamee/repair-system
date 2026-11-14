@@ -3,10 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app; base-uri 'self'; form-action 'self';">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
 <title>ผู้ดูแลระบบแจ้งซ่อม - Repair System</title>
 <link rel="stylesheet" href="style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -15,7 +18,7 @@
       <div class="login-lock-icon">🔐</div>
       <h3>ผู้ดูแลระบบแจ้งซ่อม</h3>
       <p>กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
-      <input type="password" id="admin-pass" maxlength="10">
+      <input type="password" id="admin-pass" maxlength="10" autocomplete="current-password">
       <p class="field-error hidden" id="login-error">รหัสไม่ถูกต้อง</p>
       <button class="btn-primary" id="login-btn">เข้าสู่ระบบ</button>
       <button class="btn-secondary" style="margin-top:10px;width:100%" onclick="window.location.href='index.html'">กลับหน้าหลัก</button>
@@ -26,11 +29,12 @@
     <div class="top-nav">
       <a href="index.html">← หน้าหลัก</a>
       <span>🔐 ผู้ดูแลระบบแจ้งซ่อม</span>
+      <button class="btn-secondary" id="logout-btn" style="padding:6px 14px;font-size:0.9rem;">🚪 ออกจากระบบ</button>
     </div>
 
     <div class="container-wide">
       <div class="filter-row">
-        <button class="btn-secondary" id="export-pdf">📄 Export PDF</button>
+        <button class="btn-secondary" id="export-pdf">📄 Export PDF / พิมพ์</button>
         <button class="btn-secondary" id="export-excel">📊 Export Excel</button>
       </div>
 
@@ -57,9 +61,9 @@
   </div>
 
   <div class="overlay hidden" id="lightbox" onclick="closeLightbox()">
-    <button class="lightbox-close">✕</button>
+    <button class="lightbox-close" aria-label="ปิด">✕</button>
     <div class="lightbox-content" onclick="event.stopPropagation()">
-      <img id="lightbox-img" src="">
+      <img id="lightbox-img" src="" alt="รูปภาพขยาย">
       <p id="lightbox-caption"></p>
     </div>
   </div>
@@ -78,41 +82,110 @@
     <div class="popup" style="max-width:440px;text-align:left">
       <h3 style="text-align:center">💬 ตอบกลับการซ่อม</h3>
       <label>ชื่อช่างที่ทำงานซ่อม</label>
-      <input type="text" id="reply-technician">
+      <input type="text" id="reply-technician" maxlength="100">
       <label>รายละเอียดการซ่อม</label>
-      <textarea id="reply-description"></textarea>
+      <textarea id="reply-description" maxlength="1000"></textarea>
       <label>ถ่ายรูปหลังซ่อม (จำเป็น)</label>
-      <input type="file" id="reply-image" accept="image/*">
+      <input type="file" id="reply-image" accept="image/jpeg,image/png,image/webp">
       <p class="field-error hidden" id="reply-error">กรุณากรอกข้อมูลให้ครบและแนบรูปภาพ</p>
       <button class="btn-primary" id="reply-submit-btn">ส่งการตอบกลับ</button>
       <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="hideOverlay('reply-popup')">ยกเลิก</button>
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" crossorigin="anonymous"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js" crossorigin="anonymous"></script>
   <script src="firebase-config.js"></script>
   <script src="utils.js"></script>
   <script src="locations.js"></script>
   <script>
-    const ADMIN_CODE = "6933";
-    document.getElementById("login-btn").addEventListener("click", () => {
-      const val = document.getElementById("admin-pass").value;
-      if (val === ADMIN_CODE) {
+    // Salted SHA-256 hash of default admin PIN (salt: "repair-system-sc-69-salt")
+    const ADMIN_SALT = "repair-system-sc-69-salt";
+    const ADMIN_PIN_HASH = "8dc2f8cae3a5e924a6b4fb619b6ea30e627924ed32256742ff35ae77194ada73";
+
+    async function sha256Hex(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    // Brute-force protection: progressive lockout
+    const MAX_ATTEMPTS = 5;
+    const LOCKOUT_DURATION_MS = 60 * 1000;
+    let failedAttempts = parseInt(sessionStorage.getItem("admin_failed_attempts") || "0", 10);
+    let lockoutUntil = parseInt(sessionStorage.getItem("admin_lockout_until") || "0", 10);
+
+    function checkLockout() {
+      const now = Date.now();
+      if (lockoutUntil > now) {
+        const remainingSec = Math.ceil((lockoutUntil - now) / 1000);
+        const errEl = document.getElementById("login-error");
+        errEl.textContent = `ลองรหัสผิดเกิน ${MAX_ATTEMPTS} ครั้ง กรุณารอ ${remainingSec} วินาที`;
+        errEl.classList.remove("hidden");
+        document.getElementById("login-btn").disabled = true;
+        setTimeout(checkLockout, 1000);
+        return true;
+      }
+      document.getElementById("login-btn").disabled = false;
+      return false;
+    }
+
+    // Session management: 30 minutes inactivity timeout
+    const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+    const authTime = parseInt(sessionStorage.getItem("admin_auth_time") || "0", 10);
+    if (sessionStorage.getItem("admin_auth") === "true" && Date.now() - authTime < SESSION_TIMEOUT_MS) {
+      sessionStorage.setItem("admin_auth_time", Date.now().toString());
+      hideOverlay("login-popup");
+      document.getElementById("admin-app").classList.remove("hidden");
+      initAdmin();
+    } else {
+      sessionStorage.removeItem("admin_auth");
+      checkLockout();
+    }
+
+    document.getElementById("login-btn").addEventListener("click", async () => {
+      if (checkLockout()) return;
+      const inputPin = document.getElementById("admin-pass").value;
+      const hashedInput = await sha256Hex(ADMIN_SALT + inputPin);
+
+      if (hashedInput === ADMIN_PIN_HASH) {
+        failedAttempts = 0;
+        sessionStorage.removeItem("admin_failed_attempts");
+        sessionStorage.removeItem("admin_lockout_until");
+        sessionStorage.setItem("admin_auth", "true");
+        sessionStorage.setItem("admin_auth_time", Date.now().toString());
+
         hideOverlay("login-popup");
         document.getElementById("admin-app").classList.remove("hidden");
         initAdmin();
       } else {
-        document.getElementById("login-error").classList.remove("hidden");
+        failedAttempts++;
+        sessionStorage.setItem("admin_failed_attempts", failedAttempts.toString());
+        const errEl = document.getElementById("login-error");
+        if (failedAttempts >= MAX_ATTEMPTS) {
+          lockoutUntil = Date.now() + LOCKOUT_DURATION_MS;
+          sessionStorage.setItem("admin_lockout_until", lockoutUntil.toString());
+          checkLockout();
+        } else {
+          errEl.textContent = `รหัสไม่ถูกต้อง (เหลือโอกาส ${MAX_ATTEMPTS - failedAttempts} ครั้ง)`;
+          errEl.classList.remove("hidden");
+        }
         document.getElementById("admin-pass").value = "";
       }
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      sessionStorage.removeItem("admin_auth");
+      sessionStorage.removeItem("admin_auth_time");
+      window.location.reload();
     });
 
     let allReports = [];
     let currentDeleteId = null;
     let currentReplyId = null;
-
     let adminLoaded = false;
+
     function initAdmin() {
       document.getElementById("admin-results").innerHTML = `<p class="empty-note">กำลังโหลดข้อมูล...</p>`;
       db.ref("reports").on("value", (snap) => {
@@ -136,8 +209,8 @@
       const grid = document.getElementById("admin-status-grid");
       grid.innerHTML = STATUS_ORDER.map((s) => {
         const m = getStatusMeta(s);
-        return `<button class="status-box" style="background:${m.color}" data-status="${s}">
-          <span class="emoji">${m.emoji}</span>${m.label}<span class="count" id="count-${s}">0</span></button>`;
+        return `<button class="status-box" style="background:${escapeHtml(m.color)}" data-status="${escapeHtml(s)}">
+          <span class="emoji">${escapeHtml(m.emoji)}</span>${escapeHtml(m.label)}<span class="count" id="count-${escapeHtml(s)}">0</span></button>`;
       }).join("");
       grid.querySelectorAll(".status-box").forEach((box) => {
         box.addEventListener("click", () => {
@@ -163,7 +236,7 @@
       if (type === "bathroom") {
         sub.innerHTML = `<label>อาคาร</label><select id="sub-building">${optionsHtml([1,2,3,4,5,6].map(String), "-- เลือกอาคาร --")}</select>`;
       } else if (type === "subject") {
-        sub.innerHTML = `<label>กลุ่มสาระฏ</label><select id="sub-group">${optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --")}</select>`;
+        sub.innerHTML = `<label>กลุ่มสาระฯ</label><select id="sub-group">${optionsHtml(Object.keys(SUBJECT_GROUPS), "-- เลือกกลุ่มสาระ --")}</select>`;
       } else if (type === "problemType") {
         sub.innerHTML = `<label>ประเภทปัญหา</label><select id="sub-problem">${optionsHtml(PROBLEM_TYPES, "-- เลือกประเภท --")}</select>`;
       } else if (type === "month") {
@@ -208,49 +281,76 @@
       const byProblem = {};
       const byStatus = {};
       list.forEach((r) => {
-        const pl = r.problemType === "other" ? "อื่นๆ" : PROBLEM_TYPES[r.problemType];
+        const pl = r.problemType === "other" ? (r.problemOther || "อื่นๆ") : (PROBLEM_TYPES[r.problemType] || r.problemType || "อื่นๆ");
         byProblem[pl] = (byProblem[pl] || 0) + 1;
         const sl = getStatusMeta(r.status).label;
         byStatus[sl] = (byStatus[sl] || 0) + 1;
       });
       document.getElementById("month-summary").innerHTML = `
         <div class="summary-box">
-          <h4>สรุปเดือน${MONTH_NAMES[month] || ""} — ทั้งหมด ${list.length} ปัญหา</h4>
+          <h4>สรุปเดือน${escapeHtml(MONTH_NAMES[month] || "")} — ทั้งหมด ${list.length} ปัญหา</h4>
           <p><b>แยกตามประเภทปัญหา:</b></p>
-          <ul>${Object.entries(byProblem).map(([k,v]) => `<li>${k}: ${v} รายการ</li>`).join("") || "<li>ไม่มีข้อมูล</li>"}</ul>
+          <ul>${Object.entries(byProblem).map(([k,v]) => `<li>${escapeHtml(k)}: ${escapeHtml(v)} รายการ</li>`).join("") || "<li>ไม่มีข้อมูล</li>"}</ul>
           <p><b>แยกตามสถานะ:</b></p>
-          <ul>${Object.entries(byStatus).map(([k,v]) => `<li>${k}: ${v} รายการ</li>`).join("") || "<li>ไม่มีข้อมูล</li>"}</ul>
+          <ul>${Object.entries(byStatus).map(([k,v]) => `<li>${escapeHtml(k)}: ${escapeHtml(v)} รายการ</li>`).join("") || "<li>ไม่มีข้อมูล</li>"}</ul>
         </div>`;
     }
+
+    // Event delegation สำหรับ action buttons และ lightbox
+    const adminResultsEl = document.getElementById("admin-results");
+    adminResultsEl.addEventListener("click", (e) => {
+      const target = e.target.closest("[data-action], .report-thumb");
+      if (!target) return;
+      if (target.classList.contains("report-thumb")) {
+        openLightbox(target.dataset.imgUrl, target.dataset.caption);
+        return;
+      }
+      const action = target.dataset.action;
+      const id = target.dataset.id;
+      if (action === "delete") askDelete(id);
+      if (action === "reply") openReply(id);
+    });
+
+    adminResultsEl.addEventListener("change", (e) => {
+      if (e.target.dataset.action === "change-status") {
+        changeStatus(e.target.dataset.id, e.target.value);
+      }
+    });
 
     function renderAdminResults(list) {
       const el = document.getElementById("admin-results");
       if (!list.length) { el.innerHTML = `<p class="empty-note">ไม่พบรายการแจ้งซ่อม</p>`; return; }
       el.innerHTML = list.map((r) => {
         const meta = getStatusMeta(r.status);
-        const problemLabel = r.problemType === "other" ? (r.problemOther || "อื่นๆ") : PROBLEM_TYPES[r.problemType];
+        const problemLabel = r.problemType === "other" ? (r.problemOther || "อื่นๆ") : (PROBLEM_TYPES[r.problemType] || r.problemType || "อื่นๆ");
+        const problemImgSafe = sanitizeImageUrl(r.imageUrl);
+        const replyImgSafe = r.reply ? sanitizeImageUrl(r.reply.imageUrl) : "";
+        const roleLabel = r.reporterType === "teacher" ? "ครู/บุคลากร" : "นักเรียน";
+
         return `
-          <div class="report-card" style="border-left-color:${meta.border}" data-id="${r.id}">
+          <div class="report-card" style="border-left-color:${escapeHtml(meta.border)}" data-id="${escapeHtml(r.id)}">
             <div class="report-card-head">
-              <div class="report-status-pill" id="pill-${r.id}" style="background:${meta.color}22;color:${meta.border}">${meta.emoji} ${meta.label}</div>
+              <div class="report-status-pill" id="pill-${escapeHtml(r.id)}" style="background:${escapeHtml(meta.color)}22;color:${escapeHtml(meta.border)}">${escapeHtml(meta.emoji)} ${escapeHtml(meta.label)}</div>
             </div>
             <div class="report-field"><b>สถานที่:</b> ${escapeHtml(r.locationLabel)}</div>
-            <div class="report-field"><b>ผู้แจ้ง:</b> ${escapeHtml(r.fullName)} (${r.reporterType === "teacher" ? "ครู/บุคลากร" : "นักเรียน"})</div>
+            <div class="report-field"><b>ผู้แจ้ง:</b> ${escapeHtml(r.fullName)} (${roleLabel})</div>
             <div class="report-field"><b>อีเมล:</b> ${escapeHtml(r.email)}</div>
             <div class="report-field"><b>เบอร์โทร:</b> ${escapeHtml(r.phone)}</div>
             ${r.studentId ? `<div class="report-field"><b>เลขนักเรียน:</b> ${escapeHtml(r.studentId)}</div>` : ""}
             <div class="report-field"><b>วันที่แจ้ง:</b> ${formatDateThai(r.reportDate)}</div>
-            <div class="report-field"><b>ประเภทปัญหา:</b> ${problemLabel}</div>
+            <div class="report-field"><b>ประเภทปัญหา:</b> ${escapeHtml(problemLabel)}</div>
             <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.description)}</div>
-            <img class="report-thumb" src="${r.imageUrl}" onclick="openLightbox('${r.imageUrl}','รูปของปัญหา')">
-            <div class="report-thumb-caption">รูปของปัญหา (กดเพื่อขยาย)</div>
+            ${problemImgSafe ? `
+              <img class="report-thumb" src="${problemImgSafe}" data-img-url="${escapeHtml(problemImgSafe)}" data-caption="รูปของปัญหา" alt="รูปของปัญหา">
+              <div class="report-thumb-caption">รูปของปัญหา (กดเพื่อขยาย)</div>
+            ` : ""}
 
             <div class="report-actions">
-              <select class="status-select" onchange="changeStatus('${r.id}', this.value)">
-                ${STATUS_ORDER.map((s) => `<option value="${s}" ${s===r.status?"selected":""}>${getStatusMeta(s).emoji} ${getStatusMeta(s).label}</option>`).join("")}
+              <select class="status-select" data-action="change-status" data-id="${escapeHtml(r.id)}">
+                ${STATUS_ORDER.map((s) => `<option value="${s}" ${s===r.status?"selected":""}>${escapeHtml(getStatusMeta(s).emoji)} ${escapeHtml(getStatusMeta(s).label)}</option>`).join("")}
               </select>
-              <button class="btn-danger" onclick="askDelete('${r.id}')">🗑️ ลบ</button>
-              <button class="btn-secondary" onclick="openReply('${r.id}')">💬 ตอบกลับ</button>
+              <button class="btn-danger" data-action="delete" data-id="${escapeHtml(r.id)}">🗑️ ลบ</button>
+              <button class="btn-secondary" data-action="reply" data-id="${escapeHtml(r.id)}">💬 ตอบกลับ</button>
             </div>
 
             ${r.reply ? `
@@ -258,14 +358,17 @@
                 <h4>💬 การตอบกลับจากช่าง</h4>
                 <div class="report-field"><b>ช่าง:</b> ${escapeHtml(r.reply.technician)}</div>
                 <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.reply.description)}</div>
-                <img class="report-thumb" src="${r.reply.imageUrl}" onclick="openLightbox('${r.reply.imageUrl}','รูปที่ช่างส่งตอบกลับ')">
-                <div class="report-thumb-caption">รูปที่ช่างส่งตอบกลับ (กดเพื่อขยาย)</div>
+                ${replyImgSafe ? `
+                  <img class="report-thumb" src="${replyImgSafe}" data-img-url="${escapeHtml(replyImgSafe)}" data-caption="รูปที่ช่างส่งตอบกลับ" alt="รูปที่ช่างส่งตอบกลับ">
+                  <div class="report-thumb-caption">รูปที่ช่างส่งตอบกลับ (กดเพื่อขยาย)</div>
+                ` : ""}
               </div>` : ""}
           </div>`;
       }).join("");
     }
 
     async function changeStatus(id, status) {
+      if (!id || !STATUS_ORDER.includes(status)) return;
       await db.ref(`reports/${id}`).update({ status });
       const idx = allReports.findIndex((r) => r.id === id);
       if (idx >= 0) allReports[idx].status = status;
@@ -274,6 +377,7 @@
       if (card) card.style.borderLeftColor = meta.border;
       const pill = document.getElementById(`pill-${id}`);
       if (pill) { pill.style.background = meta.color + "22"; pill.style.color = meta.border; pill.textContent = `${meta.emoji} ${meta.label}`; }
+      renderStatusCounts();
     }
 
     function askDelete(id) {
@@ -285,6 +389,8 @@
         await db.ref(`reports/${currentDeleteId}`).remove();
         const card = document.querySelector(`.report-card[data-id="${currentDeleteId}"]`);
         if (card) card.remove();
+        allReports = allReports.filter((r) => r.id !== currentDeleteId);
+        renderStatusCounts();
       }
       hideOverlay("confirm-delete-popup");
       currentDeleteId = null;
@@ -303,10 +409,20 @@
       const desc = document.getElementById("reply-description").value.trim();
       const fileInput = document.getElementById("reply-image");
       const errEl = document.getElementById("reply-error");
+
       if (!tech || !desc || !fileInput.files[0]) {
+        errEl.textContent = "กรุณากรอกข้อมูลให้ครบและแนบรูปภาพ";
         errEl.classList.remove("hidden");
         return;
       }
+
+      const fileCheck = validateImageFile(fileInput.files[0]);
+      if (!fileCheck.valid) {
+        errEl.textContent = fileCheck.error;
+        errEl.classList.remove("hidden");
+        return;
+      }
+
       const btn = document.getElementById("reply-submit-btn");
       btn.disabled = true;
       btn.textContent = "กำลังส่ง...";
@@ -320,18 +436,21 @@
         const card = document.querySelector(`.report-card[data-id="${currentReplyId}"]`);
         if (card) {
           const r = allReports[idx];
+          const safeReplyImg = sanitizeImageUrl(r.reply.imageUrl);
           const box = document.createElement("div");
           box.className = "reply-box";
           box.innerHTML = `<h4>💬 การตอบกลับจากช่าง</h4>
             <div class="report-field"><b>ช่าง:</b> ${escapeHtml(r.reply.technician)}</div>
             <div class="report-field"><b>รายละเอียด:</b> ${escapeHtml(r.reply.description)}</div>
-            <img class="report-thumb" src="${r.reply.imageUrl}" onclick="openLightbox('${r.reply.imageUrl}','รูปที่ช่างส่งตอบกลับ')">
-            <div class="report-thumb-caption">รูปที่ช่างส่งตอบกลับ (กดเพื่อขยาย)</div>`;
+            ${safeReplyImg ? `
+              <img class="report-thumb" src="${safeReplyImg}" data-img-url="${escapeHtml(safeReplyImg)}" data-caption="รูปที่ช่างส่งตอบกลับ" alt="รูปที่ช่างส่งตอบกลับ">
+              <div class="report-thumb-caption">รูปที่ช่างส่งตอบกลับ (กดเพื่อขยาย)</div>
+            ` : ""}`;
           card.appendChild(box);
         }
       } catch (err) {
         console.error(err);
-        errEl.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่";
+        errEl.textContent = "เกิดข้อผิดพลาด กรุณาลองใหม่: " + (err.message || "");
         errEl.classList.remove("hidden");
       } finally {
         btn.disabled = false;
@@ -341,33 +460,44 @@
 
     // ===== Export =====
     document.getElementById("export-pdf").addEventListener("click", () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      let y = 15;
-      doc.setFontSize(14);
-      doc.text("Repair System - Report Export", 14, y);
-      y += 10;
-      doc.setFontSize(9);
-      allReports.forEach((r) => {
-        if (y > 280) { doc.addPage(); y = 15; }
-        const line = `${r.locationLabel || ""} | ${r.fullName || ""} | ${PROBLEM_TYPES[r.problemType] || r.problemType} | ${getStatusMeta(r.status).label} | ${r.reportDate || ""}`;
-        doc.text(line, 14, y);
-        y += 7;
-      });
-      doc.save("repair-report.pdf");
+      // หน้าต่างพิมพ์ของเบราว์เซอร์รองรับฟอนต์ภาษาไทย Kanit 100% สวยงามถูกต้อง
+      if (window.confirm("ต้องการพิมพ์หรือบันทึกเป็น PDF ผ่านระบบพิมพ์ของเบราว์เซอร์เพื่อแสดงผลภาษาไทยที่ถูกต้องหรือไม่?")) {
+        window.print();
+        return;
+      }
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        let y = 15;
+        doc.setFontSize(14);
+        doc.text("Repair System - Report Export", 14, y);
+        y += 10;
+        doc.setFontSize(9);
+        allReports.forEach((r) => {
+          if (y > 280) { doc.addPage(); y = 15; }
+          const line = `ID: ${r.id || ""} | Date: ${r.reportDate || ""} | Status: ${r.status || ""}`;
+          doc.text(line, 14, y);
+          y += 7;
+        });
+        doc.save("repair-report.pdf");
+      } catch (err) {
+        console.error(err);
+        window.print();
+      }
     });
 
     document.getElementById("export-excel").addEventListener("click", () => {
+      // ป้องกัน CSV/Formula Injection (CWE-1236) ผ่าน sanitizeExcelValue
       const rows = allReports.map((r) => ({
-        "สถานที่": r.locationLabel,
-        "ผู้แจ้ง": r.fullName,
+        "สถานที่": sanitizeExcelValue(r.locationLabel),
+        "ผู้แจ้ง": sanitizeExcelValue(r.fullName),
         "สถานะผู้แจ้ง": r.reporterType === "teacher" ? "ครู/บุคลากร" : "นักเรียน",
-        "อีเมล": r.email,
-        "เบอร์โทร": r.phone,
-        "เลขนักเรียน": r.studentId || "",
-        "วันที่แจ้ง": r.reportDate,
-        "ประเภทปัญหา": r.problemType === "other" ? (r.problemOther || "อื่นๆ") : PROBLEM_TYPES[r.problemType],
-        "รายละเอียด": r.description,
+        "อีเมล": sanitizeExcelValue(r.email),
+        "เบอร์โทร": sanitizeExcelValue(r.phone),
+        "เลขนักเรียน": sanitizeExcelValue(r.studentId || ""),
+        "วันที่แจ้ง": sanitizeExcelValue(r.reportDate),
+        "ประเภทปัญหา": sanitizeExcelValue(r.problemType === "other" ? (r.problemOther || "อื่นๆ") : (PROBLEM_TYPES[r.problemType] || r.problemType || "อื่นๆ")),
+        "รายละเอียด": sanitizeExcelValue(r.description),
         "สถานะ": getStatusMeta(r.status).label
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
